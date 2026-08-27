@@ -1,0 +1,117 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:minerva_app/models/appointment.dart';
+import 'package:minerva_app/providers/appointment_provider.dart';
+import 'package:minerva_app/providers/booking_provider.dart';
+import 'package:minerva_app/screens/appointments_screen.dart';
+import 'package:minerva_app/screens/booking/calendar_screen.dart';
+import 'package:minerva_app/screens/booking/details_screen.dart';
+import 'package:minerva_app/screens/booking/review_screen.dart';
+import 'package:minerva_app/screens/booking/service_screen.dart';
+import 'package:minerva_app/screens/booking/success_screen.dart';
+import 'package:minerva_app/screens/booking/time_screen.dart';
+import 'package:minerva_app/screens/home_screen.dart';
+import 'package:minerva_app/screens/main_shell.dart';
+import 'package:minerva_app/screens/profile_screen.dart';
+import 'package:minerva_app/screens/splash_screen.dart';
+import 'package:minerva_app/theme/app_theme.dart';
+
+/// Renders every screen at several phone sizes and text scales.
+///
+/// A RenderFlex overflow or an unbounded-constraint error is reported as a
+/// thrown exception in widget tests, so simply pumping each screen is a real
+/// check that the responsive layout holds up.
+void main() {
+  /// Small phone, mainstream phone, large phone.
+  const sizes = <String, Size>{
+    'small (360x640)': Size(360, 640),
+    'medium (390x844)': Size(390, 844),
+    'large (430x932)': Size(430, 932),
+  };
+
+  /// The extremes the app clamps text scaling to.
+  const textScales = <double>[0.9, 1.3];
+
+  final sampleAppointment = Appointment(
+    id: 'sample',
+    start: DateTime.now().add(const Duration(days: 3)),
+    firstName: 'Elif',
+    lastName: 'Yilmaz',
+    phone: '+90 555 123 45 67',
+    serviceId: 'classic_manicure',
+  );
+
+  /// A fully-populated draft, so review/success render their richest state.
+  BookingProvider filledBooking() => BookingProvider()
+    ..selectDate(DateTime.now().add(const Duration(days: 3)))
+    ..selectHour(16)
+    ..setDetails(
+      firstName: 'Elif',
+      lastName: 'Yilmaz',
+      phone: '+90 555 123 45 67',
+    )
+    ..selectService('classic_manicure');
+
+  final screens = <String, Widget Function()>{
+    'Splash': () => const SplashScreen(),
+    'MainShell (Home)': () => const MainShell(),
+    'Home': () => const HomeScreen(),
+    'Calendar': () => const CalendarScreen(),
+    'Time': () => const TimeScreen(),
+    'Details': () => const DetailsScreen(),
+    'Service': () => const ServiceScreen(),
+    'Review': () => const ReviewScreen(),
+    'Success': () => SuccessScreen(appointment: sampleAppointment),
+    'Appointments': () => const AppointmentsScreen(),
+    'Profile': () => const ProfileScreen(),
+  };
+
+  for (final sizeEntry in sizes.entries) {
+    for (final textScale in textScales) {
+      group('${sizeEntry.key} @ ${textScale}x text', () {
+        for (final screenEntry in screens.entries) {
+          testWidgets('${screenEntry.key} renders cleanly', (tester) async {
+            SharedPreferences.setMockInitialValues({});
+
+            tester.view.physicalSize = sizeEntry.value * 3;
+            tester.view.devicePixelRatio = 3;
+            addTearDown(tester.view.reset);
+
+            final appointments = AppointmentProvider();
+            await appointments.load();
+            await appointments.add(sampleAppointment);
+
+            await tester.pumpWidget(
+              MultiProvider(
+                providers: [
+                  ChangeNotifierProvider.value(value: appointments),
+                  ChangeNotifierProvider.value(value: filledBooking()),
+                ],
+                child: MaterialApp(
+                  theme: AppTheme.light,
+                  home: Builder(
+                    builder: (context) => MediaQuery(
+                      data: MediaQuery.of(context).copyWith(
+                        textScaler: TextScaler.linear(textScale),
+                      ),
+                      child: screenEntry.value(),
+                    ),
+                  ),
+                ),
+              ),
+            );
+
+            await tester.pumpAndSettle();
+
+            // pumpAndSettle rethrows layout/paint errors, so reaching here
+            // means the screen laid out and painted without complaint.
+            expect(tester.takeException(), isNull);
+          });
+        }
+      });
+    }
+  }
+}
