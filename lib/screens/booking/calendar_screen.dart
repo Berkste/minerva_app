@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../providers/booking_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/formatting.dart';
@@ -54,13 +55,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final fmt = Fmt.of(context);
     final booking = context.watch<BookingProvider>();
     final selected = booking.date;
 
     return Scaffold(
       appBar: AppBar(
         leading: const BackButton(),
-        title: const Text('Calendar'),
+        title: Text(l10n.calendarTitle),
         actions: const [
           IconButton(
             onPressed: null,
@@ -84,13 +87,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     child: Column(
                       children: [
                         _MonthHeader(
-                          month: _visibleMonth,
+                          label: fmt.monthYear(_visibleMonth),
                           canGoBack: _canGoBack,
                           onPrevious: () => _shiftMonth(-1),
                           onNext: () => _shiftMonth(1),
                         ),
                         const SizedBox(height: 14),
-                        const _WeekdayRow(),
+                        _WeekdayRow(labels: fmt.weekdayLabels()),
                         const SizedBox(height: 6),
                         _MonthGrid(
                           month: _visibleMonth,
@@ -109,7 +112,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
             BottomActionBar(
               child: GradientButton(
-                label: 'Select Time',
+                label: l10n.selectTime,
                 // Stays disabled until a day is chosen.
                 onPressed: selected == null
                     ? null
@@ -127,16 +130,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 }
 
-/// "‹  August 2026  ›"
+/// "‹  Ağustos 2026  ›"
 class _MonthHeader extends StatelessWidget {
   const _MonthHeader({
-    required this.month,
+    required this.label,
     required this.canGoBack,
     required this.onPrevious,
     required this.onNext,
   });
 
-  final DateTime month;
+  final String label;
   final bool canGoBack;
   final VoidCallback onPrevious;
   final VoidCallback onNext;
@@ -150,12 +153,21 @@ class _MonthHeader extends StatelessWidget {
           icon: Icons.chevron_left_rounded,
           onPressed: canGoBack ? onPrevious : null,
         ),
-        Text(
-          Fmt.monthYear(month),
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontSize: 14.5,
-                fontWeight: FontWeight.w600,
-              ),
+        // Takes whatever the arrows leave and scales down rather than
+        // shoving them off the card — Turkish month names are long, and
+        // longer still at large accessibility text sizes.
+        Expanded(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              maxLines: 1,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ),
         ),
         _ArrowButton(icon: Icons.chevron_right_rounded, onPressed: onNext),
       ],
@@ -182,25 +194,17 @@ class _ArrowButton extends StatelessWidget {
   }
 }
 
-/// Mon–Sun column captions.
+/// Monday-first column captions, in the active language.
 class _WeekdayRow extends StatelessWidget {
-  const _WeekdayRow();
+  const _WeekdayRow({required this.labels});
 
-  static const List<String> _labels = [
-    'Mon',
-    'Tue',
-    'Wed',
-    'Thu',
-    'Fri',
-    'Sat',
-    'Sun',
-  ];
+  final List<String> labels;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        for (final label in _labels)
+        for (final label in labels)
           Expanded(
             child: Center(
               child: Text(
@@ -339,6 +343,7 @@ class _SelectedDateSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return SoftCard(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -346,7 +351,7 @@ class _SelectedDateSummary extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Selected Date',
+            l10n.selectedDate,
             style: theme.textTheme.bodySmall?.copyWith(
               color: AppColors.textSecondary,
               fontSize: 11.5,
@@ -354,7 +359,9 @@ class _SelectedDateSummary extends StatelessWidget {
           ),
           const SizedBox(height: 5),
           Text(
-            date == null ? 'Pick a day above' : Fmt.fullDate(date!),
+            date == null
+                ? l10n.pickADayAbove
+                : Fmt.of(context).fullDate(date!),
             style: theme.textTheme.titleSmall?.copyWith(
               fontSize: 14,
               fontWeight: FontWeight.w600,

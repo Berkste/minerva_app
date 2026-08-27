@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../models/salon_service.dart';
 import '../../providers/appointment_provider.dart';
 import '../../providers/booking_provider.dart';
@@ -30,6 +31,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
     final appointments = context.read<AppointmentProvider>();
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context);
 
     // Someone else may have taken this slot while the user was filling the
     // form; re-check before writing.
@@ -37,9 +39,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
     if (appointments.isSlotTaken(slot)) {
       setState(() => _isSaving = false);
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text('That slot was just booked. Please pick another time.'),
-        ),
+        SnackBar(content: Text(l10n.slotTakenMeanwhile)),
       );
       return;
     }
@@ -57,6 +57,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final fmt = Fmt.of(context);
     final booking = context.watch<BookingProvider>();
     final start = booking.start!;
     final service = SalonService.byId(booking.serviceId);
@@ -64,7 +66,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: const BackButton(),
-        title: const Text('Review & Confirm'),
+        title: Text(l10n.reviewAndConfirm),
       ),
       body: SafeArea(
         top: false,
@@ -78,35 +80,35 @@ class _ReviewScreenState extends State<ReviewScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const CardSectionTitle('Appointment Details'),
+                        CardSectionTitle(l10n.appointmentDetails),
                         const SizedBox(height: 6),
                         const Divider(),
                         const SizedBox(height: 4),
                         InfoRow(
                           icon: Icons.calendar_today_outlined,
-                          label: 'Date',
-                          value: Fmt.fullDate(start),
+                          label: l10n.labelDate,
+                          value: fmt.fullDate(start),
                         ),
                         InfoRow(
                           icon: Icons.schedule_outlined,
-                          label: 'Time',
+                          label: l10n.labelTime,
                           value: Fmt.timeRange(start),
                         ),
                         InfoRow(
                           icon: Icons.spa_outlined,
-                          label: 'Service',
-                          value: service?.name ?? 'Not selected',
+                          label: l10n.labelService,
+                          value: service?.name(l10n) ?? l10n.serviceNotSelected,
                         ),
                         if (service != null)
                           InfoRow(
                             icon: Icons.sell_outlined,
-                            label: 'Price',
+                            label: l10n.labelPrice,
                             value: service.priceLabel,
                           ),
                         InfoRow(
                           icon: Icons.timelapse_outlined,
-                          label: 'Duration',
-                          value: Fmt.durationLabel(),
+                          label: l10n.labelDuration,
+                          value: fmt.durationLabel(),
                         ),
                       ],
                     ),
@@ -116,27 +118,27 @@ class _ReviewScreenState extends State<ReviewScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const CardSectionTitle('Your Information'),
+                        CardSectionTitle(l10n.yourInformation),
                         const SizedBox(height: 6),
                         const Divider(),
                         const SizedBox(height: 4),
                         InfoRow(
                           icon: Icons.person_outline,
-                          label: 'Name',
+                          label: l10n.labelName,
                           value: '${booking.firstName} ${booking.lastName}',
                         ),
                         InfoRow(
                           icon: Icons.phone_outlined,
-                          label: 'Phone',
-                          value: booking.phone,
+                          label: l10n.labelPhone,
+                          value: Fmt.phone(booking.phone),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const HintBanner(
+                  HintBanner(
                     icon: Icons.info_outline_rounded,
-                    text: 'Need a change? Tap back to edit any step.',
+                    text: l10n.reviewEditHint,
                   ),
                 ],
               ),
@@ -145,7 +147,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
               child: _isSaving
                   ? const _SavingButton()
                   : GradientButton(
-                      label: 'Confirm Appointment',
+                      label: l10n.confirmAppointment,
                       onPressed: _confirm,
                     ),
             ),

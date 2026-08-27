@@ -1,0 +1,6 @@
+# Turkish is the template: new strings are written in tr first, then translated.
+arb-dir: lib/l10n
+template-arb-file: app_tr.arb
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+nullable-getter: false

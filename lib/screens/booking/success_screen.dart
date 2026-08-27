@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../models/appointment.dart';
 import '../../models/salon_service.dart';
 import '../../theme/app_colors.dart';
@@ -75,6 +76,7 @@ class _SuccessScreenState extends State<SuccessScreen>
 
   Widget _buildContent(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final appointment = widget.appointment;
     final service = SalonService.byId(appointment.serviceId);
 
@@ -91,7 +93,7 @@ class _SuccessScreenState extends State<SuccessScreen>
             child: Column(
               children: [
                 Text(
-                  'Appointment\nConfirmed!',
+                  l10n.appointmentConfirmed,
                   textAlign: TextAlign.center,
                   style: theme.textTheme.headlineSmall?.copyWith(
                     fontSize: 24,
@@ -102,7 +104,7 @@ class _SuccessScreenState extends State<SuccessScreen>
                 ),
                 const SizedBox(height: 22),
                 Text(
-                  Fmt.fullDate(appointment.start),
+                  Fmt.of(context).fullDate(appointment.start),
                   textAlign: TextAlign.center,
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontSize: 14.5,
@@ -120,7 +122,7 @@ class _SuccessScreenState extends State<SuccessScreen>
                 if (service != null) ...[
                   const SizedBox(height: 4),
                   Text(
-                    service.name,
+                    service.name(l10n),
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: AppColors.textSecondary,
@@ -130,8 +132,7 @@ class _SuccessScreenState extends State<SuccessScreen>
                 ],
                 const SizedBox(height: 22),
                 Text(
-                  'Thank you, ${appointment.firstName}!\n'
-                  'We look forward to seeing you.',
+                  l10n.thankYouMessage(appointment.firstName),
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: AppColors.textSecondary,
@@ -144,7 +145,7 @@ class _SuccessScreenState extends State<SuccessScreen>
           ),
 
           const Spacer(flex: 3),
-          GradientButton(label: 'Back to Home', onPressed: _backToHome),
+          GradientButton(label: l10n.backToHome, onPressed: _backToHome),
           const SizedBox(height: 24),
         ],
       ),

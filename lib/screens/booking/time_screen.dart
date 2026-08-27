@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../l10n/app_localizations.dart';
+import '../../models/appointment.dart';
 import '../../providers/appointment_provider.dart';
 import '../../providers/booking_provider.dart';
 import '../../theme/app_colors.dart';
@@ -19,6 +21,7 @@ class TimeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final booking = context.watch<BookingProvider>();
     final appointments = context.watch<AppointmentProvider>();
     final date = booking.date!;
@@ -27,7 +30,7 @@ class TimeScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         leading: const BackButton(),
-        title: const Text('Select Time'),
+        title: Text(l10n.selectTime),
       ),
       body: SafeArea(
         top: false,
@@ -39,7 +42,7 @@ class TimeScreen extends StatelessWidget {
                 children: [
                   Center(
                     child: Text(
-                      Fmt.fullDate(date),
+                      Fmt.of(context).fullDate(date),
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -74,7 +77,7 @@ class TimeScreen extends StatelessWidget {
                         label: Fmt.hour(hour),
                         isSelected: booking.hour == hour,
                         isDisabled: isPast || isTaken,
-                        disabledReason: isTaken ? 'Booked' : null,
+                        disabledReason: isTaken ? l10n.slotBooked : null,
                         onTap: () =>
                             context.read<BookingProvider>().selectHour(hour),
                       );
@@ -83,14 +86,16 @@ class TimeScreen extends StatelessWidget {
 
                   const SizedBox(height: 24),
                   HintBanner(
-                    text: 'Each appointment is ${Fmt.durationLabel()}.',
+                    text: l10n.appointmentDurationHint(
+                      kAppointmentDuration.inHours,
+                    ),
                   ),
                 ],
               ),
             ),
             BottomActionBar(
               child: GradientButton(
-                label: 'Continue',
+                label: l10n.continueLabel,
                 onPressed: booking.hour == null
                     ? null
                     : () => Navigator.of(context).push(

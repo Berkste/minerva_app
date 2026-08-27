@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:minerva_app/l10n/app_localizations.dart';
 import 'package:minerva_app/models/appointment.dart';
 import 'package:minerva_app/providers/appointment_provider.dart';
 import 'package:minerva_app/providers/booking_provider.dart';
+import 'package:minerva_app/providers/locale_provider.dart';
 import 'package:minerva_app/screens/appointments_screen.dart';
 import 'package:minerva_app/screens/booking/calendar_screen.dart';
 import 'package:minerva_app/screens/booking/details_screen.dart';
@@ -25,6 +28,10 @@ import 'package:minerva_app/theme/app_theme.dart';
 /// thrown exception in widget tests, so simply pumping each screen is a real
 /// check that the responsive layout holds up.
 void main() {
+  setUpAll(() async {
+    await initializeDateFormatting();
+  });
+
   /// Small phone, mainstream phone, large phone.
   const sizes = <String, Size>{
     'small (360x640)': Size(360, 640),
@@ -34,6 +41,10 @@ void main() {
 
   /// The extremes the app clamps text scaling to.
   const textScales = <double>[0.9, 1.3];
+
+  // Turkish strings are longer than their English counterparts on several
+  // screens, so both languages have to be checked for overflow.
+  final locales = LocaleProvider.supportedLocales;
 
   final sampleAppointment = Appointment(
     id: 'sample',
@@ -69,49 +80,59 @@ void main() {
     'Profile': () => const ProfileScreen(),
   };
 
-  for (final sizeEntry in sizes.entries) {
-    for (final textScale in textScales) {
-      group('${sizeEntry.key} @ ${textScale}x text', () {
-        for (final screenEntry in screens.entries) {
-          testWidgets('${screenEntry.key} renders cleanly', (tester) async {
-            SharedPreferences.setMockInitialValues({});
+  for (final locale in locales) {
+    for (final sizeEntry in sizes.entries) {
+      for (final textScale in textScales) {
+        group(
+          '[${locale.languageCode}] ${sizeEntry.key} @ ${textScale}x text',
+          () {
+            for (final screenEntry in screens.entries) {
+              testWidgets('${screenEntry.key} renders cleanly', (tester) async {
+                SharedPreferences.setMockInitialValues({});
 
-            tester.view.physicalSize = sizeEntry.value * 3;
-            tester.view.devicePixelRatio = 3;
-            addTearDown(tester.view.reset);
+                tester.view.physicalSize = sizeEntry.value * 3;
+                tester.view.devicePixelRatio = 3;
+                addTearDown(tester.view.reset);
 
-            final appointments = AppointmentProvider();
-            await appointments.load();
-            await appointments.add(sampleAppointment);
+                final appointments = AppointmentProvider();
+                await appointments.load();
+                await appointments.add(sampleAppointment);
 
-            await tester.pumpWidget(
-              MultiProvider(
-                providers: [
-                  ChangeNotifierProvider.value(value: appointments),
-                  ChangeNotifierProvider.value(value: filledBooking()),
-                ],
-                child: MaterialApp(
-                  theme: AppTheme.light,
-                  home: Builder(
-                    builder: (context) => MediaQuery(
-                      data: MediaQuery.of(context).copyWith(
-                        textScaler: TextScaler.linear(textScale),
+                await tester.pumpWidget(
+                  MultiProvider(
+                    providers: [
+                      ChangeNotifierProvider.value(value: appointments),
+                      ChangeNotifierProvider.value(value: filledBooking()),
+                      ChangeNotifierProvider(create: (_) => LocaleProvider()),
+                    ],
+                    child: MaterialApp(
+                      theme: AppTheme.light,
+                      locale: locale,
+                      localizationsDelegates:
+                          AppLocalizations.localizationsDelegates,
+                      supportedLocales: AppLocalizations.supportedLocales,
+                      home: Builder(
+                        builder: (context) => MediaQuery(
+                          data: MediaQuery.of(context).copyWith(
+                            textScaler: TextScaler.linear(textScale),
+                          ),
+                          child: screenEntry.value(),
+                        ),
                       ),
-                      child: screenEntry.value(),
                     ),
                   ),
-                ),
-              ),
-            );
+                );
 
-            await tester.pumpAndSettle();
+                await tester.pumpAndSettle();
 
-            // pumpAndSettle rethrows layout/paint errors, so reaching here
-            // means the screen laid out and painted without complaint.
-            expect(tester.takeException(), isNull);
-          });
-        }
-      });
+                // pumpAndSettle rethrows layout/paint errors, so reaching here
+                // means the screen laid out and painted without complaint.
+                expect(tester.takeException(), isNull);
+              });
+            }
+          },
+        );
+      }
     }
   }
 }

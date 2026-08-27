@@ -1,14 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 
+import 'l10n/app_localizations.dart';
 import 'providers/appointment_provider.dart';
 import 'providers/booking_provider.dart';
+import 'providers/locale_provider.dart';
 import 'screens/splash_screen.dart';
 import 'theme/app_theme.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Loads month and weekday names for every locale, so DateFormat can render
+  // Turkish dates regardless of the device language.
+  await initializeDateFormatting();
 
   // Portrait only: every screen is a single-column layout.
   SystemChrome.setPreferredOrientations([
@@ -41,26 +49,43 @@ class MinervaApp extends StatelessWidget {
         ),
         // The booking currently being filled in.
         ChangeNotifierProvider(create: (_) => BookingProvider()),
+        // The language choice, restored from the previous session.
+        ChangeNotifierProvider(create: (_) => LocaleProvider()..load()),
       ],
-      child: MaterialApp(
-        title: 'Minerva Nail Art',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light,
-        home: const SplashScreen(),
-        builder: (context, child) {
-          // Clamp text scaling: past ~1.3x the fixed-height chips and cards
-          // start to clip, so this keeps large-font devices readable.
-          final mediaQuery = MediaQuery.of(context);
-          return MediaQuery(
-            data: mediaQuery.copyWith(
-              textScaler: mediaQuery.textScaler.clamp(
-                minScaleFactor: 0.9,
-                maxScaleFactor: 1.3,
+      child: Consumer<LocaleProvider>(
+        builder: (context, localeProvider, _) => MaterialApp(
+          onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light,
+
+          // Null locale means "follow the device"; the resolution callback
+          // falls back to Turkish for any language we do not ship.
+          locale: localeProvider.locale,
+          supportedLocales: LocaleProvider.supportedLocales,
+          localeResolutionCallback: LocaleProvider.resolve,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+
+          home: const SplashScreen(),
+          builder: (context, child) {
+            // Clamp text scaling: past ~1.3x the fixed-height chips and cards
+            // start to clip, so this keeps large-font devices readable.
+            final mediaQuery = MediaQuery.of(context);
+            return MediaQuery(
+              data: mediaQuery.copyWith(
+                textScaler: mediaQuery.textScaler.clamp(
+                  minScaleFactor: 0.9,
+                  maxScaleFactor: 1.3,
+                ),
               ),
-            ),
-            child: child!,
-          );
-        },
+              child: child!,
+            );
+          },
+        ),
       ),
     );
   }

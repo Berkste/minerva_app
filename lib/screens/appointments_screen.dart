@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models/appointment.dart';
 import '../providers/appointment_provider.dart';
 import '../theme/app_colors.dart';
@@ -19,6 +20,9 @@ class AppointmentsScreen extends StatelessWidget {
     BuildContext context,
     Appointment appointment,
   ) async {
+    final l10n = AppLocalizations.of(context);
+    final fmt = Fmt.of(context);
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -26,21 +30,26 @@ class AppointmentsScreen extends StatelessWidget {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(18),
         ),
-        title: const Text('Cancel appointment?', style: TextStyle(fontSize: 17)),
+        title: Text(
+          l10n.cancelAppointmentTitle,
+          style: const TextStyle(fontSize: 17),
+        ),
         content: Text(
-          'Your booking on ${Fmt.shortDate(appointment.start)} at '
-          '${Fmt.time(appointment.start)} will be removed.',
+          l10n.cancelAppointmentBody(
+            fmt.shortDate(appointment.start),
+            Fmt.time(appointment.start),
+          ),
           style: const TextStyle(fontSize: 13.5, height: 1.5),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Keep it'),
+            child: Text(l10n.keepIt),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: TextButton.styleFrom(foregroundColor: const Color(0xFFE05C87)),
-            child: const Text('Cancel booking'),
+            child: Text(l10n.cancelBooking),
           ),
         ],
       ),
@@ -53,6 +62,7 @@ class AppointmentsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final provider = context.watch<AppointmentProvider>();
     final upcoming = provider.upcoming;
     final past = provider.past;
@@ -60,7 +70,7 @@ class AppointmentsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const Text('My Appointments'),
+        title: Text(l10n.myAppointments),
       ),
       body: SafeArea(
         top: false,
@@ -75,14 +85,12 @@ class AppointmentsScreen extends StatelessWidget {
             if (upcoming.isEmpty && past.isEmpty) {
               return EmptyState(
                 icon: Icons.event_note_outlined,
-                title: 'No appointments yet',
-                message:
-                    'Your bookings will appear here once you schedule your '
-                    'first visit.',
+                title: l10n.noAppointmentsTitle,
+                message: l10n.noAppointmentsMessage,
                 action: SizedBox(
                   width: 210,
                   child: GradientButton(
-                    label: 'Add New Appointment',
+                    label: l10n.addNewAppointment,
                     icon: Icons.add_rounded,
                     onPressed: () => HomeScreen.startBooking(context),
                   ),
@@ -95,14 +103,14 @@ class AppointmentsScreen extends StatelessWidget {
               children: [
                 if (upcoming.isNotEmpty) ...[
                   _SectionLabel(
-                    'Upcoming',
+                    l10n.sectionUpcoming,
                     count: upcoming.length,
                   ),
                   const SizedBox(height: 12),
                   for (final appointment in upcoming) ...[
                     AppointmentCard(
                       appointment: appointment,
-                      title: 'Upcoming Appointment',
+                      title: l10n.upcomingAppointment,
                       onCancel: () => _confirmCancel(context, appointment),
                     ),
                     const SizedBox(height: 12),
@@ -111,19 +119,19 @@ class AppointmentsScreen extends StatelessWidget {
                 ],
 
                 OutlineActionButton(
-                  label: 'Add New Appointment',
+                  label: l10n.addNewAppointment,
                   icon: Icons.add_rounded,
                   onPressed: () => HomeScreen.startBooking(context),
                 ),
 
                 if (past.isNotEmpty) ...[
                   const SizedBox(height: 30),
-                  _SectionLabel('Past', count: past.length),
+                  _SectionLabel(l10n.sectionPast, count: past.length),
                   const SizedBox(height: 12),
                   for (final appointment in past) ...[
                     AppointmentCard(
                       appointment: appointment,
-                      title: 'Completed Appointment',
+                      title: l10n.completedAppointment,
                       isPast: true,
                     ),
                     const SizedBox(height: 12),
@@ -134,7 +142,7 @@ class AppointmentsScreen extends StatelessWidget {
                   const SizedBox(height: 20),
                   Center(
                     child: Text(
-                      'Nothing coming up — book your next visit.',
+                      l10n.nothingComingUp,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: AppColors.textSecondary,
                         fontSize: 12.5,

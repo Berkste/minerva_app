@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../models/salon_service.dart';
 import '../../providers/booking_provider.dart';
 import '../../theme/app_colors.dart';
@@ -24,12 +25,13 @@ class ServiceScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final booking = context.watch<BookingProvider>();
 
     return Scaffold(
       appBar: AppBar(
         leading: const BackButton(),
-        title: const Text('Select Service (Optional)'),
+        title: Text(l10n.selectServiceOptional),
       ),
       body: SafeArea(
         top: false,
@@ -41,7 +43,7 @@ class ServiceScreen extends StatelessWidget {
                 children: [
                   Center(
                     child: Text(
-                      'Choose the service you want',
+                      l10n.chooseTheServiceYouWant,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: AppColors.textSecondary,
                         fontSize: 13,
@@ -82,7 +84,7 @@ class ServiceScreen extends StatelessWidget {
                         context.read<BookingProvider>().selectService(null);
                         _goToReview(context);
                       },
-                      child: const Text('Skip this step'),
+                      child: Text(l10n.skipThisStep),
                     ),
                   ),
                 ],
@@ -90,7 +92,7 @@ class ServiceScreen extends StatelessWidget {
             ),
             BottomActionBar(
               child: GradientButton(
-                label: 'Continue',
+                label: l10n.continueLabel,
                 onPressed: () => _goToReview(context),
               ),
             ),
@@ -141,7 +143,7 @@ class _ServiceTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      service.name,
+                      service.name(AppLocalizations.of(context)),
                       style: theme.textTheme.bodyMedium?.copyWith(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w500,

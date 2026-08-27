@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme/app_colors.dart';
 import 'appointments_screen.dart';
 import 'home_screen.dart';
@@ -21,14 +22,11 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   late int _index = widget.initialIndex;
 
+  /// Icons only; the captions are resolved per language in [build].
   static const List<_Destination> _destinations = [
-    _Destination(Icons.home_rounded, Icons.home_outlined, 'Home'),
-    _Destination(
-      Icons.calendar_month_rounded,
-      Icons.calendar_month_outlined,
-      'Appointments',
-    ),
-    _Destination(Icons.person_rounded, Icons.person_outline, 'Profile'),
+    _Destination(Icons.home_rounded, Icons.home_outlined),
+    _Destination(Icons.calendar_month_rounded, Icons.calendar_month_outlined),
+    _Destination(Icons.person_rounded, Icons.person_outline),
   ];
 
   /// Lets child screens jump to another tab (e.g. Home -> Appointments).
@@ -36,6 +34,9 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final labels = [l10n.navHome, l10n.navAppointments, l10n.navProfile];
+
     return Scaffold(
       body: IndexedStack(
         index: _index,
@@ -56,11 +57,11 @@ class _MainShellState extends State<MainShell> {
             currentIndex: _index,
             onTap: _goToTab,
             items: [
-              for (final d in _destinations)
+              for (var i = 0; i < _destinations.length; i++)
                 BottomNavigationBarItem(
-                  icon: Icon(d.outlined),
-                  activeIcon: Icon(d.filled),
-                  label: d.label,
+                  icon: Icon(_destinations[i].outlined),
+                  activeIcon: Icon(_destinations[i].filled),
+                  label: labels[i],
                 ),
             ],
           ),
@@ -71,9 +72,8 @@ class _MainShellState extends State<MainShell> {
 }
 
 class _Destination {
-  const _Destination(this.filled, this.outlined, this.label);
+  const _Destination(this.filled, this.outlined);
 
   final IconData filled;
   final IconData outlined;
-  final String label;
 }

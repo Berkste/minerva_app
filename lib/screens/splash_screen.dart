@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme/app_colors.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/minerva_logo.dart';
@@ -53,6 +54,7 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       body: Container(
@@ -87,7 +89,7 @@ class _SplashScreenState extends State<SplashScreen>
                         const MinervaLogo(markSize: 78, titleSize: 34),
                         const SizedBox(height: 34),
                         Text(
-                          'Beautiful nails,\nperfect time.',
+                          l10n.splashTagline,
                           textAlign: TextAlign.center,
                           style: theme.textTheme.titleMedium?.copyWith(
                             color: AppColors.purple,
@@ -98,7 +100,7 @@ class _SplashScreenState extends State<SplashScreen>
                         ),
                         const Spacer(flex: 3),
                         GradientButton(
-                          label: 'Get Started',
+                          label: l10n.getStarted,
                           onPressed: _getStarted,
                         ),
                         const SizedBox(height: 40),

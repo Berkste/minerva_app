@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../providers/booking_provider.dart';
 import '../../theme/app_colors.dart';
+import '../../utils/phone_formatter.dart';
 import '../../widgets/common.dart';
 import '../../widgets/gradient_button.dart';
 import 'service_screen.dart';
@@ -30,7 +31,13 @@ class _DetailsScreenState extends State<DetailsScreen> {
     final booking = context.read<BookingProvider>();
     _firstName = TextEditingController(text: booking.firstName);
     _lastName = TextEditingController(text: booking.lastName);
-    _phone = TextEditingController(text: booking.phone);
+    // Re-mask on the way in, so a number saved in another shape still shows
+    // as (555) 555 55 55 when the user steps back to this screen.
+    _phone = TextEditingController(
+      text: TurkishPhoneInputFormatter.format(
+        TurkishPhoneInputFormatter.extractDigits(booking.phone),
+      ),
+    );
   }
 
   @override
@@ -60,11 +67,12 @@ class _DetailsScreenState extends State<DetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       appBar: AppBar(
         leading: const BackButton(),
-        title: const Text('Your Details'),
+        title: Text(l10n.yourDetails),
       ),
       body: SafeArea(
         top: false,
@@ -79,7 +87,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
                   children: [
                     Center(
                       child: Text(
-                        'Please enter your information',
+                        l10n.pleaseEnterYourInformation,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: AppColors.textSecondary,
                           fontSize: 13,
@@ -91,22 +99,30 @@ class _DetailsScreenState extends State<DetailsScreen> {
                       controller: _firstName,
                       textCapitalization: TextCapitalization.words,
                       textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'First Name',
-                        prefixIcon: Icon(Icons.person_outline, size: 19),
+                      decoration: InputDecoration(
+                        labelText: l10n.firstName,
+                        prefixIcon: const Icon(Icons.person_outline, size: 19),
                       ),
-                      validator: (value) => _requiredName(value, 'first name'),
+                      validator: (value) => _validateName(
+                        value,
+                        required: l10n.firstNameRequired,
+                        tooShort: l10n.firstNameTooShort,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _lastName,
                       textCapitalization: TextCapitalization.words,
                       textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'Last Name',
-                        prefixIcon: Icon(Icons.person_outline, size: 19),
+                      decoration: InputDecoration(
+                        labelText: l10n.lastName,
+                        prefixIcon: const Icon(Icons.person_outline, size: 19),
                       ),
-                      validator: (value) => _requiredName(value, 'last name'),
+                      validator: (value) => _validateName(
+                        value,
+                        required: l10n.lastNameRequired,
+                        tooShort: l10n.lastNameTooShort,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
@@ -114,34 +130,34 @@ class _DetailsScreenState extends State<DetailsScreen> {
                       keyboardType: TextInputType.phone,
                       textInputAction: TextInputAction.done,
                       onFieldSubmitted: (_) => _continue(),
-                      // Accept the digits, spaces and + that phone numbers use;
-                      // reject everything else at the keystroke.
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(
-                          RegExp(r'[0-9+\s()-]'),
-                        ),
-                        LengthLimitingTextInputFormatter(20),
-                      ],
-                      decoration: const InputDecoration(
-                        labelText: 'Phone Number',
-                        hintText: '+90 555 123 45 67',
-                        prefixIcon: Icon(Icons.phone_outlined, size: 19),
+                      // Rewrites the field as (555) 555 55 55 on every
+                      // keystroke, so the format cannot be typed wrong.
+                      inputFormatters: const [TurkishPhoneInputFormatter()],
+                      decoration: InputDecoration(
+                        labelText: l10n.phoneNumber,
+                        hintText: l10n.phoneHint,
+                        prefixIcon: const Icon(Icons.phone_outlined, size: 19),
                       ),
-                      validator: _validatePhone,
+                      validator: (value) => _validatePhone(
+                        value,
+                        required: l10n.phoneRequired,
+                        invalid: l10n.phoneInvalid,
+                      ),
                     ),
                     const SizedBox(height: 22),
-                    const HintBanner(
+                    HintBanner(
                       icon: Icons.lock_outline_rounded,
-                      text:
-                          'Your details stay on this device and are only used '
-                          'for this booking.',
+                      text: l10n.detailsPrivacyNote,
                     ),
                   ],
                 ),
               ),
             ),
             BottomActionBar(
-              child: GradientButton(label: 'Continue', onPressed: _continue),
+              child: GradientButton(
+                label: l10n.continueLabel,
+                onPressed: _continue,
+              ),
             ),
           ],
         ),
@@ -150,20 +166,26 @@ class _DetailsScreenState extends State<DetailsScreen> {
   }
 
   /// Names must be present and at least two characters.
-  static String? _requiredName(String? value, String label) {
+  static String? _validateName(
+    String? value, {
+    required String required,
+    required String tooShort,
+  }) {
     final text = value?.trim() ?? '';
-    if (text.isEmpty) return 'Please enter your $label.';
-    if (text.length < 2) return 'That $label looks too short.';
+    if (text.isEmpty) return required;
+    if (text.length < 2) return tooShort;
     return null;
   }
 
-  /// Requires at least 10 digits, ignoring spaces and punctuation.
-  static String? _validatePhone(String? value) {
+  /// Requires a complete 10-digit number, i.e. the full (555) 555 55 55 shape.
+  static String? _validatePhone(
+    String? value, {
+    required String required,
+    required String invalid,
+  }) {
     final text = value?.trim() ?? '';
-    if (text.isEmpty) return 'Please enter your phone number.';
-
-    final digits = text.replaceAll(RegExp(r'\D'), '');
-    if (digits.length < 10) return 'Please enter a valid phone number.';
+    if (text.isEmpty) return required;
+    if (!TurkishPhoneInputFormatter.isComplete(text)) return invalid;
     return null;
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models/appointment.dart';
 import '../models/salon_service.dart';
 import '../theme/app_colors.dart';
@@ -30,6 +31,7 @@ class AppointmentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final service = SalonService.byId(appointment.serviceId);
 
     return Opacity(
@@ -63,7 +65,7 @@ class AppointmentCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    Fmt.fullDate(appointment.start),
+                    Fmt.of(context).fullDate(appointment.start),
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -82,7 +84,7 @@ class AppointmentCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          service?.name ?? 'Service not selected',
+                          service?.name(l10n) ?? l10n.serviceNotSelectedOnCard,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             fontSize: 13,
                             color: service == null
@@ -95,7 +97,11 @@ class AppointmentCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      StatusChip(label: isPast ? 'Completed' : 'Confirmed'),
+                      StatusChip(
+                        label: isPast
+                            ? l10n.statusCompleted
+                            : l10n.statusConfirmed,
+                      ),
                     ],
                   ),
                 ],
@@ -123,7 +129,7 @@ class _CancelButton extends StatelessWidget {
       visualDensity: VisualDensity.compact,
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-      tooltip: 'Cancel appointment',
+      tooltip: AppLocalizations.of(context).cancelAppointment,
     );
   }
 }

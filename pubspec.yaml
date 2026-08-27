@@ -11,6 +11,10 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # Turkish + English UI strings, dates and number symbols.
+  flutter_localizations:
+    sdk: flutter
+
   cupertino_icons: ^1.0.8
 
   # State management for the booking draft + saved appointments.
@@ -33,3 +37,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  # Generates AppLocalizations from lib/l10n/*.arb (see l10n.yaml).
+  generate: true

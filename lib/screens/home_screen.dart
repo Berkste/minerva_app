@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models/salon_service.dart';
 import '../providers/appointment_provider.dart';
 import '../providers/booking_provider.dart';
@@ -30,6 +31,7 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final appointments = context.watch<AppointmentProvider>();
     final next = appointments.nextAppointment;
 
@@ -44,7 +46,7 @@ class HomeScreen extends StatelessWidget {
             const _HeroBanner(),
             const SizedBox(height: 18),
             GradientButton(
-              label: 'New Appointment',
+              label: l10n.newAppointment,
               icon: Icons.add_rounded,
               onPressed: () => startBooking(context),
             ),
@@ -55,7 +57,7 @@ class HomeScreen extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'My Next Appointment',
+                    l10n.myNextAppointment,
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -70,7 +72,10 @@ class HomeScreen extends StatelessWidget {
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
-                    child: const Text('See all', style: TextStyle(fontSize: 12.5)),
+                    child: Text(
+                      l10n.seeAll,
+                      style: const TextStyle(fontSize: 12.5),
+                    ),
                   ),
               ],
             ),
@@ -86,7 +91,7 @@ class HomeScreen extends StatelessWidget {
 
             // --- Service catalogue preview ---------------------------------
             Text(
-              'Our Services',
+              l10n.ourServices,
               style: theme.textTheme.titleSmall?.copyWith(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -150,6 +155,7 @@ class _HeroBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(22),
@@ -199,7 +205,7 @@ class _HeroBanner extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Your beauty,\nour passion.',
+                          l10n.heroTitle,
                           style: theme.textTheme.titleLarge?.copyWith(
                             fontSize: 21,
                             fontWeight: FontWeight.w600,
@@ -209,7 +215,7 @@ class _HeroBanner extends StatelessWidget {
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          'Book your appointment\neasily and quickly.',
+                          l10n.heroSubtitle,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: AppColors.textSecondary,
                             height: 1.5,
@@ -258,6 +264,7 @@ class _NoUpcomingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return SoftCard(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 22),
@@ -282,7 +289,7 @@ class _NoUpcomingCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'No appointment yet',
+                  l10n.noAppointmentYet,
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w600,
@@ -290,7 +297,7 @@ class _NoUpcomingCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  'Tap "New Appointment" to book your visit.',
+                  l10n.noAppointmentYetHint,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: AppColors.textSecondary,
                     fontSize: 12,
@@ -312,6 +319,7 @@ class _ServiceStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     // The strip is a horizontal list, so its height must be fixed — grow it
     // with the user's text size or the two-line service name clips.
@@ -352,7 +360,7 @@ class _ServiceStrip extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        service.name,
+                        service.name(l10n),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.bodyMedium?.copyWith(
