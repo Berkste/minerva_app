@@ -120,6 +120,22 @@
   "version": "Sürüm {number}",
   "@version": { "placeholders": { "number": { "type": "String" } } },
 
+  "slotJustTaken": "Bu saat az önce başkası tarafından alındı. Lütfen başka bir saat seçin.",
+  "slotInThePast": "Bu saat geçti. Lütfen ileri bir tarih seçin.",
+  "connectionProblem": "Bağlantı kurulamadı. İnternetinizi kontrol edip tekrar deneyin.",
+  "somethingWentWrong": "Bir şeyler ters gitti. Lütfen tekrar deneyin.",
+  "retry": "Tekrar dene",
+  "loadingAvailability": "Uygun saatler yükleniyor…",
+  "availabilityUnavailable": "Dolu saatler alınamadı. Seçiminiz onay sırasında kontrol edilecek.",
+  "offlineShowingCached": "Çevrimdışısınız. Son bilinen randevularınız gösteriliyor.",
+  "couldNotLoadAppointments": "Randevularınız yüklenemedi.",
+  "booking": "Randevu oluşturuluyor…",
+
+  "anonymousSignInDisabled": "Supabase projesinde anonim girişler kapalı. Authentication → Providers bölümünden açıp uygulamayı yeniden başlatın.",
+
+  "setupRequiredTitle": "Kurulum gerekli",
+  "setupRequiredMessage": "Uygulama Supabase bilgileri olmadan derlenmiş. SUPABASE_URL ve SUPABASE_ANON_KEY değerlerini --dart-define ile verip yeniden başlatın.",
+
   "language": "Dil",
   "languageSystem": "Cihaz dili",
   "languageTurkish": "Türkçe",

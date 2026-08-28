@@ -1,12 +1,14 @@
 import 'package:flutter/foundation.dart';
 
 import '../models/appointment.dart';
+import '../models/slot.dart';
+import '../utils/phone_formatter.dart';
 
 /// The in-progress booking, filled in step by step as the user moves through
 /// calendar -> time -> details -> service -> review.
 ///
-/// It is deliberately separate from [AppointmentProvider]: nothing here is
-/// persisted until the user confirms on the review screen.
+/// Nothing here reaches Supabase until the customer confirms on the review
+/// screen.
 class BookingProvider extends ChangeNotifier {
   DateTime? _date;
   int? _hour;
@@ -19,21 +21,26 @@ class BookingProvider extends ChangeNotifier {
   int? get hour => _hour;
   String get firstName => _firstName;
   String get lastName => _lastName;
+
+  /// Ten significant digits, no separators — the shape the database stores.
   String get phone => _phone;
+
   String? get serviceId => _serviceId;
 
   /// Slot start times offered by the salon: 10:00 to 20:00, every two hours.
+  ///
+  /// Must stay in step with the `slot_hour` check constraint in the database.
   static const List<int> availableHours = [10, 12, 14, 16, 18, 20];
 
-  /// The chosen slot as a single instant, or null until both date and hour
-  /// have been picked.
-  DateTime? get start {
+  /// The chosen slot, or null until both date and hour have been picked.
+  Slot? get slot {
     final date = _date;
     final hour = _hour;
     if (date == null || hour == null) return null;
-    return DateTime(date.year, date.month, date.day, hour);
+    return Slot(date, hour);
   }
 
+  DateTime? get start => slot?.start;
   DateTime? get end => start?.add(kAppointmentDuration);
 
   /// Clears every field. Called whenever a new booking flow begins so a
@@ -64,6 +71,13 @@ class BookingProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Clears the chosen hour — used when the slot turns out to be taken.
+  void clearHour() {
+    if (_hour == null) return;
+    _hour = null;
+    notifyListeners();
+  }
+
   void setDetails({
     required String firstName,
     required String lastName,
@@ -71,7 +85,8 @@ class BookingProvider extends ChangeNotifier {
   }) {
     _firstName = firstName.trim();
     _lastName = lastName.trim();
-    _phone = phone.trim();
+    // Store digits only; the mask is a display concern.
+    _phone = TurkishPhoneInputFormatter.extractDigits(phone);
     notifyListeners();
   }
 
@@ -79,19 +94,5 @@ class BookingProvider extends ChangeNotifier {
   void selectService(String? id) {
     _serviceId = id;
     notifyListeners();
-  }
-
-  /// Builds the [Appointment] to persist. Only call once [start] is non-null.
-  Appointment buildAppointment() {
-    final slot = start;
-    assert(slot != null, 'buildAppointment() called before a slot was chosen');
-    return Appointment(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
-      start: slot!,
-      firstName: _firstName,
-      lastName: _lastName,
-      phone: _phone,
-      serviceId: _serviceId,
-    );
   }
 }

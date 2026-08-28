@@ -3,7 +3,8 @@ import 'package:provider/provider.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../models/appointment.dart';
-import '../../providers/appointment_provider.dart';
+import '../../models/slot.dart';
+import '../../providers/availability_provider.dart';
 import '../../providers/booking_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/formatting.dart';
@@ -13,17 +14,46 @@ import 'details_screen.dart';
 
 /// Step 2 of 5 — pick a two-hour slot between 10:00 and 20:00.
 ///
-/// Slots that have already passed today, or that are taken by an existing
-/// booking, are shown but not selectable.
-class TimeScreen extends StatelessWidget {
+/// Which slots are free is a live question now that bookings are shared, so
+/// availability is fetched for the chosen day. If that fetch fails the grid
+/// still lets the customer choose and says the choice is unverified — the
+/// database has the final say at confirm time regardless.
+class TimeScreen extends StatefulWidget {
   const TimeScreen({super.key});
+
+  /// Named so a booking that loses the race can pop straight back here,
+  /// keeping the calendar behind it in the stack.
+  static const String routeName = 'booking/time';
+
+  static Route<void> route() => MaterialPageRoute(
+        settings: const RouteSettings(name: routeName),
+        builder: (_) => const TimeScreen(),
+      );
+
+  @override
+  State<TimeScreen> createState() => _TimeScreenState();
+}
+
+class _TimeScreenState extends State<TimeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // After the first frame so the provider can safely notify listeners.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _refresh());
+  }
+
+  Future<void> _refresh({bool force = false}) async {
+    final date = context.read<BookingProvider>().date;
+    if (date == null || !mounted) return;
+    await context.read<AvailabilityProvider>().loadFor(date, force: force);
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final booking = context.watch<BookingProvider>();
-    final appointments = context.watch<AppointmentProvider>();
+    final availability = context.watch<AvailabilityProvider>();
     final date = booking.date!;
     final now = DateTime.now();
 
@@ -31,6 +61,15 @@ class TimeScreen extends StatelessWidget {
       appBar: AppBar(
         leading: const BackButton(),
         title: Text(l10n.selectTime),
+        actions: [
+          IconButton(
+            onPressed: availability.isLoading
+                ? null
+                : () => _refresh(force: true),
+            icon: const Icon(Icons.refresh_rounded, size: 20),
+            color: AppColors.textTertiary,
+          ),
+        ],
       ),
       body: SafeArea(
         top: false,
@@ -67,16 +106,16 @@ class TimeScreen extends StatelessWidget {
                     ),
                     itemBuilder: (context, index) {
                       final hour = BookingProvider.availableHours[index];
-                      final slot =
-                          DateTime(date.year, date.month, date.day, hour);
+                      final slot = Slot(date, hour);
 
-                      final isPast = slot.isBefore(now);
-                      final isTaken = appointments.isSlotTaken(slot);
+                      final isPast = slot.start.isBefore(now);
+                      final isTaken = availability.isTaken(slot);
 
                       return _TimeSlot(
                         label: Fmt.hour(hour),
                         isSelected: booking.hour == hour,
                         isDisabled: isPast || isTaken,
+                        isChecking: availability.isLoading,
                         disabledReason: isTaken ? l10n.slotBooked : null,
                         onTap: () =>
                             context.read<BookingProvider>().selectHour(hour),
@@ -85,11 +124,23 @@ class TimeScreen extends StatelessWidget {
                   ),
 
                   const SizedBox(height: 24),
-                  HintBanner(
-                    text: l10n.appointmentDurationHint(
-                      kAppointmentDuration.inHours,
+
+                  if (availability.isLoading)
+                    HintBanner(
+                      icon: Icons.sync_rounded,
+                      text: l10n.loadingAvailability,
+                    )
+                  else if (availability.isUnverified)
+                    HintBanner(
+                      icon: Icons.cloud_off_rounded,
+                      text: l10n.availabilityUnavailable,
+                    )
+                  else
+                    HintBanner(
+                      text: l10n.appointmentDurationHint(
+                        kAppointmentDuration.inHours,
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -118,6 +169,7 @@ class _TimeSlot extends StatelessWidget {
     required this.label,
     required this.isSelected,
     required this.isDisabled,
+    required this.isChecking,
     required this.onTap,
     this.disabledReason,
   });
@@ -125,6 +177,10 @@ class _TimeSlot extends StatelessWidget {
   final String label;
   final bool isSelected;
   final bool isDisabled;
+
+  /// Availability is still loading, so the chip is dimmed but not struck out.
+  final bool isChecking;
+
   final String? disabledReason;
   final VoidCallback onTap;
 
@@ -151,41 +207,45 @@ class _TimeSlot extends StatelessWidget {
               ]
             : null,
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: isDisabled ? null : onTap,
-          borderRadius: BorderRadius.circular(14),
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  label,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontSize: 14,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                    color: isSelected
-                        ? Colors.white
-                        : isDisabled
-                            ? AppColors.textTertiary.withValues(alpha: 0.55)
-                            : AppColors.textPrimary,
-                    // A strike-through makes "unavailable" unmistakable
-                    // without relying on colour alone.
-                    decoration:
-                        isDisabled ? TextDecoration.lineThrough : null,
-                    decorationColor: AppColors.textTertiary,
-                  ),
-                ),
-                if (isDisabled && disabledReason != null)
+      child: Opacity(
+        opacity: isChecking && !isSelected ? 0.55 : 1,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: isDisabled ? null : onTap,
+            borderRadius: BorderRadius.circular(14),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
                   Text(
-                    disabledReason!,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      fontSize: 9.5,
-                      color: AppColors.textTertiary.withValues(alpha: 0.8),
+                    label,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontSize: 14,
+                      fontWeight:
+                          isSelected ? FontWeight.w600 : FontWeight.w500,
+                      color: isSelected
+                          ? Colors.white
+                          : isDisabled
+                              ? AppColors.textTertiary.withValues(alpha: 0.55)
+                              : AppColors.textPrimary,
+                      // A strike-through makes "unavailable" unmistakable
+                      // without relying on colour alone.
+                      decoration:
+                          isDisabled ? TextDecoration.lineThrough : null,
+                      decorationColor: AppColors.textTertiary,
                     ),
                   ),
-              ],
+                  if (isDisabled && disabledReason != null)
+                    Text(
+                      disabledReason!,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontSize: 9.5,
+                        color: AppColors.textTertiary.withValues(alpha: 0.8),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         ),

@@ -302,6 +302,52 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get slotJustTaken =>
+      'Someone else just booked that time. Please pick another one.';
+
+  @override
+  String get slotInThePast =>
+      'That time has already passed. Please pick a later one.';
+
+  @override
+  String get connectionProblem =>
+      'Could not connect. Check your internet and try again.';
+
+  @override
+  String get somethingWentWrong => 'Something went wrong. Please try again.';
+
+  @override
+  String get retry => 'Try again';
+
+  @override
+  String get loadingAvailability => 'Loading available times…';
+
+  @override
+  String get availabilityUnavailable =>
+      'Could not check which times are taken. Your choice will be verified when you confirm.';
+
+  @override
+  String get offlineShowingCached =>
+      'You are offline. Showing your last known appointments.';
+
+  @override
+  String get couldNotLoadAppointments => 'Could not load your appointments.';
+
+  @override
+  String get booking => 'Booking…';
+
+  @override
+  String get anonymousSignInDisabled =>
+      'Anonymous sign-ins are disabled in the Supabase project. Enable them under Authentication → Providers, then restart the app.';
+
+  @override
+  String get setupRequiredTitle => 'Setup required';
+
+  @override
+  String get setupRequiredMessage =>
+      'This app was built without Supabase credentials. Pass SUPABASE_URL and SUPABASE_ANON_KEY with --dart-define and restart.';
+
+  @override
   String get language => 'Language';
 
   @override

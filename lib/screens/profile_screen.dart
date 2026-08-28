@@ -23,10 +23,9 @@ class ProfileScreen extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final provider = context.watch<AppointmentProvider>();
 
-    // Most recently created booking is the best guess at "who is using this
-    // phone", and it is the only customer data the app holds.
-    final latest =
-        provider.appointments.isEmpty ? null : provider.appointments.last;
+    // The saved profile, written the first time this device completed a
+    // booking. Null means the customer is still a guest.
+    final profile = provider.profile;
 
     return Scaffold(
       appBar: AppBar(
@@ -62,7 +61,7 @@ class ProfileScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          latest?.fullName ?? l10n.guest,
+                          profile?.fullName ?? l10n.guest,
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -70,9 +69,9 @@ class ProfileScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          latest == null
+                          profile == null
                               ? l10n.bookOnceToSaveDetails
-                              : Fmt.phone(latest.phone),
+                              : Fmt.phone(profile.phone),
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: AppColors.textSecondary,
                             fontSize: 12.5,

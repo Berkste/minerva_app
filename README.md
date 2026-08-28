@@ -5,10 +5,17 @@ Minerva UI/UX spec: modern, minimalist, purple / pink / white.
 
 ## Running it
 
+Bookings live in Supabase, so the app needs credentials at build time:
+
 ```bash
 flutter pub get
-flutter run
+flutter run \
+  --dart-define=SUPABASE_URL=https://<project-ref>.supabase.co \
+  --dart-define=SUPABASE_ANON_KEY=<publishable-key>
 ```
+
+Built without them, the app shows a "Setup required" screen instead of failing
+at the first query. See **Backend** below for the one-time project setup.
 
 To preview in a browser instead of on a device, add the web target first:
 
@@ -34,6 +41,94 @@ Success** → the booking appears on Home and in My Appointments.
 | — | Success | Confetti burst and the confirmed summary |
 
 Bottom navigation: **Home · Appointments · Profile**.
+
+## Backend
+
+Supabase. Schema and policies live in
+`supabase/migrations/20260827120000_init.sql` — run it once in the SQL editor.
+
+### One booking per slot
+
+This is the guarantee the whole design is built around, and it is enforced in
+one place:
+
+```sql
+create unique index appointments_one_confirmed_per_slot
+  on public.appointments (slot_date, slot_hour)
+  where status = 'confirmed';
+```
+
+Postgres evaluates that index inside each insert's own transaction, so of two
+simultaneous bookings for the same slot exactly one commits and the other
+fails with SQLSTATE `23505`. There is no window between "check" and "insert"
+for a second booking to slip through.
+
+The app therefore **never checks availability before writing**. It attempts
+the insert and lets the database decide; `23505` is translated to
+`SlotTakenException`, the customer is told someone else got there first, the
+slot is greyed out, and they are dropped back on the time grid. Availability
+is fetched only to grey out slots up front — it is a courtesy, never a
+permission.
+
+The index is *partial* so cancelling frees the slot: a cancelled row keeps its
+slot but drops out of the index.
+
+### Slots are wall clock, not instants
+
+`slot_date` + `slot_hour`, never a `timestamptz` computed on the device.
+
+If the slot were an instant, two phones in different time zones would turn
+"14:00" into two different instants and uniqueness would not bite — both
+bookings would succeed for what the salon considers one slot. The salon's day
+is wall clock, so that is what is stored and what uniqueness is enforced on.
+
+### Identity, and guest → customer
+
+There is no sign-up. On first launch the app signs in **anonymously**, which
+gives the device a durable `auth.uid()`. The first completed booking writes a
+`profiles` row from the details form — that is the moment a guest becomes a
+known customer, and later bookings prefill from it and keep it current.
+
+Anonymous sign-ins must be enabled in the Supabase dashboard
+(*Authentication → Sign In / Providers → Anonymous sign-ins*).
+
+Two consequences worth knowing:
+
+- The identity is per install. The same person on a second device is a
+  different user and will not see their bookings there.
+- Reinstalling loses the session. The bookings stay in the database and keep
+  occupying their slots, but the customer can no longer see or cancel them.
+
+Both are fixed the same way: let customers verify the phone number they
+already type in, and link the anonymous user to it. The schema does not change
+— `auth.uid()` survives the upgrade, and existing rows come with it.
+
+### Privacy
+
+RLS restricts every row to its owner, so no customer can read another's name
+or phone number. Availability would be impossible under that rule, so it comes
+from a `security definer` function that returns slot keys and nothing else:
+
+```sql
+select * from public.booked_slots('2026-09-01', '2026-09-30');
+-- slot_date  | slot_hour
+```
+
+### Other server-side rules
+
+- A trigger rejects bookings whose slot has already passed in
+  `Europe/Istanbul`, so a device with a wrong clock cannot book yesterday.
+- `slot_hour` is constrained to the salon's hours, `phone` to ten digits, and
+  names to 2–60 characters — the same rules the app enforces, restated where
+  they cannot be bypassed.
+- There is no delete policy. Bookings are cancelled, never erased.
+
+### Offline
+
+Supabase is the source of truth. The last known appointments and profile are
+cached on the device so the home screen is not blank without a connection; the
+list says plainly when it is showing a cached copy. Booking always requires a
+connection — availability is never answered from cache.
 
 ## Languages
 
@@ -92,20 +187,31 @@ no asset bundle.
 ## Architecture
 
 ```
+supabase/
+  migrations/               Schema, RLS, the uniqueness index
+
 lib/
   main.dart                 App entry, providers, locale wiring
+  config/
+    supabase_config.dart    Credentials from --dart-define
   l10n/
     app_tr.arb / app_en.arb String catalogues (tr is the template)
     app_localizations*.dart Generated — do not edit by hand
   models/
-    appointment.dart        Booking record + JSON round trip
+    slot.dart               Wall-clock slot identity (date + hour)
+    appointment.dart        Booking record + row mapping
+    profile.dart            Saved contact details
     salon_service.dart      Fixed catalogue; names resolved per language
   providers/
     booking_provider.dart   The in-progress booking (not persisted)
-    appointment_provider.dart  Confirmed bookings, keeps storage in sync
+    appointment_provider.dart  Bookings + profile, with load/offline state
+    availability_provider.dart Which slots are taken, live
     locale_provider.dart    Language choice, remembered between launches
   services/
-    storage_service.dart    SharedPreferences read/write as one JSON array
+    booking_repository.dart          The backend interface
+    supabase_booking_repository.dart The Supabase implementation
+    booking_exception.dart           Failures the UI can explain
+    local_cache.dart                 Offline read-through copy
   screens/
     splash_screen.dart
     main_shell.dart         Bottom navigation, keeps tabs alive
@@ -136,7 +242,17 @@ re-checks immediately before saving in case the state changed mid-flow.
 flutter test
 ```
 
-171 tests:
+210 tests. `test/fake_booking_repository.dart` is an in-memory stand-in for
+Supabase that reproduces the unique index, so the double-booking race is
+testable without a live database — including the nasty interleaving where a
+slot is taken *between* the availability check and the insert.
+
+- **Concurrency** — the second booking of a slot is rejected; a slot taken by
+  another customer cannot be booked; a slot taken mid-flight still cannot
+  double book; cancelling releases it; other hours are unaffected.
+- **Slot identity** — a slot is a date and an hour, so two `DateTime`s on the
+  same day are the same slot whatever time they carry.
+
 
 - **Unit** — appointment JSON round trip, 2-hour duration, upcoming/past
   boundaries, booking-draft rules (a new date clears the chosen hour, `reset()`

@@ -650,6 +650,84 @@ abstract class AppLocalizations {
   /// **'Sürüm {number}'**
   String version(String number);
 
+  /// No description provided for @slotJustTaken.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bu saat az önce başkası tarafından alındı. Lütfen başka bir saat seçin.'**
+  String get slotJustTaken;
+
+  /// No description provided for @slotInThePast.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bu saat geçti. Lütfen ileri bir tarih seçin.'**
+  String get slotInThePast;
+
+  /// No description provided for @connectionProblem.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bağlantı kurulamadı. İnternetinizi kontrol edip tekrar deneyin.'**
+  String get connectionProblem;
+
+  /// No description provided for @somethingWentWrong.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bir şeyler ters gitti. Lütfen tekrar deneyin.'**
+  String get somethingWentWrong;
+
+  /// No description provided for @retry.
+  ///
+  /// In tr, this message translates to:
+  /// **'Tekrar dene'**
+  String get retry;
+
+  /// No description provided for @loadingAvailability.
+  ///
+  /// In tr, this message translates to:
+  /// **'Uygun saatler yükleniyor…'**
+  String get loadingAvailability;
+
+  /// No description provided for @availabilityUnavailable.
+  ///
+  /// In tr, this message translates to:
+  /// **'Dolu saatler alınamadı. Seçiminiz onay sırasında kontrol edilecek.'**
+  String get availabilityUnavailable;
+
+  /// No description provided for @offlineShowingCached.
+  ///
+  /// In tr, this message translates to:
+  /// **'Çevrimdışısınız. Son bilinen randevularınız gösteriliyor.'**
+  String get offlineShowingCached;
+
+  /// No description provided for @couldNotLoadAppointments.
+  ///
+  /// In tr, this message translates to:
+  /// **'Randevularınız yüklenemedi.'**
+  String get couldNotLoadAppointments;
+
+  /// No description provided for @booking.
+  ///
+  /// In tr, this message translates to:
+  /// **'Randevu oluşturuluyor…'**
+  String get booking;
+
+  /// No description provided for @anonymousSignInDisabled.
+  ///
+  /// In tr, this message translates to:
+  /// **'Supabase projesinde anonim girişler kapalı. Authentication → Providers bölümünden açıp uygulamayı yeniden başlatın.'**
+  String get anonymousSignInDisabled;
+
+  /// No description provided for @setupRequiredTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kurulum gerekli'**
+  String get setupRequiredTitle;
+
+  /// No description provided for @setupRequiredMessage.
+  ///
+  /// In tr, this message translates to:
+  /// **'Uygulama Supabase bilgileri olmadan derlenmiş. SUPABASE_URL ve SUPABASE_ANON_KEY değerlerini --dart-define ile verip yeniden başlatın.'**
+  String get setupRequiredMessage;
+
   /// No description provided for @language.
   ///
   /// In tr, this message translates to:

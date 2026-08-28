@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
 import '../models/appointment.dart';
 import '../providers/appointment_provider.dart';
+import '../services/booking_exception.dart';
 import '../theme/app_colors.dart';
+import '../utils/error_messages.dart';
 import '../utils/formatting.dart';
 import '../widgets/appointment_card.dart';
 import '../widgets/common.dart';
@@ -56,7 +58,15 @@ class AppointmentsScreen extends StatelessWidget {
     );
 
     if (confirmed != true || !context.mounted) return;
-    await context.read<AppointmentProvider>().remove(appointment.id);
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await context.read<AppointmentProvider>().cancel(appointment.id);
+    } on BookingException catch (failure) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(messageFor(l10n, failure))),
+      );
+    }
   }
 
   @override
@@ -82,6 +92,22 @@ class AppointmentsScreen extends StatelessWidget {
               );
             }
 
+            if (provider.state == LoadState.failed) {
+              return EmptyState(
+                icon: Icons.cloud_off_rounded,
+                title: l10n.couldNotLoadAppointments,
+                message: messageFor(l10n, provider.error!),
+                action: SizedBox(
+                  width: 180,
+                  child: OutlineActionButton(
+                    label: l10n.retry,
+                    icon: Icons.refresh_rounded,
+                    onPressed: () => provider.load(),
+                  ),
+                ),
+              );
+            }
+
             if (upcoming.isEmpty && past.isEmpty) {
               return EmptyState(
                 icon: Icons.event_note_outlined,
@@ -98,9 +124,22 @@ class AppointmentsScreen extends StatelessWidget {
               );
             }
 
-            return ListView(
+            return RefreshIndicator(
+              color: AppColors.purple,
+              onRefresh: provider.load,
+              child: ListView(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
               children: [
+                // Says plainly when the list is a cached copy rather than
+                // what the server currently holds.
+                if (provider.isStale) ...[
+                  HintBanner(
+                    icon: Icons.cloud_off_rounded,
+                    text: l10n.offlineShowingCached,
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
                 if (upcoming.isNotEmpty) ...[
                   _SectionLabel(
                     l10n.sectionUpcoming,
@@ -151,6 +190,7 @@ class AppointmentsScreen extends StatelessWidget {
                   ),
                 ],
               ],
+              ),
             );
           },
         ),

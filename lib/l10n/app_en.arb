@@ -107,6 +107,22 @@
   "yourDataValue": "Stored on this device only",
   "version": "Version {number}",
 
+  "slotJustTaken": "Someone else just booked that time. Please pick another one.",
+  "slotInThePast": "That time has already passed. Please pick a later one.",
+  "connectionProblem": "Could not connect. Check your internet and try again.",
+  "somethingWentWrong": "Something went wrong. Please try again.",
+  "retry": "Try again",
+  "loadingAvailability": "Loading available times…",
+  "availabilityUnavailable": "Could not check which times are taken. Your choice will be verified when you confirm.",
+  "offlineShowingCached": "You are offline. Showing your last known appointments.",
+  "couldNotLoadAppointments": "Could not load your appointments.",
+  "booking": "Booking…",
+
+  "anonymousSignInDisabled": "Anonymous sign-ins are disabled in the Supabase project. Enable them under Authentication → Providers, then restart the app.",
+
+  "setupRequiredTitle": "Setup required",
+  "setupRequiredMessage": "This app was built without Supabase credentials. Pass SUPABASE_URL and SUPABASE_ANON_KEY with --dart-define and restart.",
+
   "language": "Language",
   "languageSystem": "System default",
   "languageTurkish": "Turkish",

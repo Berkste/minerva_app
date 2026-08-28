@@ -7,14 +7,21 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:minerva_app/l10n/app_localizations.dart';
 import 'package:minerva_app/main.dart';
 import 'package:minerva_app/models/appointment.dart';
+import 'package:minerva_app/models/profile.dart';
+import 'package:minerva_app/models/slot.dart';
 import 'package:minerva_app/providers/appointment_provider.dart';
+import 'package:minerva_app/providers/availability_provider.dart';
 import 'package:minerva_app/providers/booking_provider.dart';
 import 'package:minerva_app/providers/locale_provider.dart';
 import 'package:minerva_app/screens/booking/calendar_screen.dart';
 import 'package:minerva_app/screens/booking/details_screen.dart';
-import 'package:minerva_app/services/storage_service.dart';
+import 'package:minerva_app/screens/booking/review_screen.dart';
+import 'package:minerva_app/services/booking_exception.dart';
+import 'package:minerva_app/services/local_cache.dart';
 import 'package:minerva_app/utils/formatting.dart';
 import 'package:minerva_app/utils/phone_formatter.dart';
+
+import 'fake_booking_repository.dart';
 
 /// Builds a [Fmt] bound to [locale], by reading it out of a live widget tree.
 Future<Fmt> _fmtFor(WidgetTester tester, Locale locale) async {
@@ -38,10 +45,17 @@ Future<Fmt> _fmtFor(WidgetTester tester, Locale locale) async {
 }
 
 /// Wraps a booking step in the providers and localizations it expects.
-Widget _wrapBookingScreen(Widget child, Locale locale) {
+Widget _wrapBookingScreen(
+  Widget child,
+  Locale locale, {
+  FakeBookingRepository? repository,
+}) {
+  final repo = repository ?? FakeBookingRepository();
+
   return MultiProvider(
     providers: [
-      ChangeNotifierProvider(create: (_) => AppointmentProvider()..load()),
+      ChangeNotifierProvider(create: (_) => AppointmentProvider(repo)..load()),
+      ChangeNotifierProvider(create: (_) => AvailabilityProvider(repo)),
       ChangeNotifierProvider(
         create: (_) => BookingProvider()
           ..selectDate(DateTime.now().add(const Duration(days: 2)))
@@ -57,6 +71,15 @@ Widget _wrapBookingScreen(Widget child, Locale locale) {
   );
 }
 
+Appointment _appointmentAt(Slot slot, {String id = 'test'}) => Appointment(
+      id: id,
+      userId: 'user-1',
+      slot: slot,
+      firstName: 'Test',
+      lastName: 'Customer',
+      phone: '5551234567',
+    );
+
 void main() {
   setUpAll(() async {
     // Month and weekday names for both languages.
@@ -71,36 +94,67 @@ void main() {
   group('Appointment', () {
     final appointment = Appointment(
       id: 'a1',
-      start: DateTime(2026, 8, 14, 16),
+      userId: 'user-1',
+      slot: Slot(DateTime(2026, 8, 14), 16),
       firstName: 'Elif',
       lastName: 'Yilmaz',
-      phone: '+90 555 123 45 67',
+      phone: '5551234567',
       serviceId: 'classic_manicure',
     );
 
     test('ends two hours after it starts', () {
+      expect(appointment.start, DateTime(2026, 8, 14, 16));
       expect(appointment.end, DateTime(2026, 8, 14, 18));
     });
 
-    test('survives a JSON round trip', () {
-      final restored = Appointment.fromJson(appointment.toJson());
+    test('survives a database-row round trip', () {
+      final restored = Appointment.fromRow({
+        ...appointment.toJson(),
+      });
 
       expect(restored.id, appointment.id);
-      expect(restored.start, appointment.start);
+      expect(restored.slot, appointment.slot);
       expect(restored.fullName, 'Elif Yilmaz');
       expect(restored.serviceId, 'classic_manicure');
+      expect(restored.status, AppointmentStatus.confirmed);
+    });
+
+    test('the insert payload carries the wall-clock slot, not an instant', () {
+      final payload = appointment.toInsert();
+
+      expect(payload['slot_date'], '2026-08-14');
+      expect(payload['slot_hour'], 16);
+      expect(payload.containsKey('id'), isFalse, reason: 'server assigns it');
+      expect(payload.containsKey('status'), isFalse);
     });
 
     test('is upcoming only until it has finished', () {
       final start = DateTime(2026, 8, 14, 16);
 
-      expect(appointment.isUpcoming(now: start.subtract(const Duration(days: 1))),
-          isTrue);
+      expect(
+        appointment.isUpcoming(now: start.subtract(const Duration(days: 1))),
+        isTrue,
+      );
       // Still upcoming halfway through the slot.
-      expect(appointment.isUpcoming(now: start.add(const Duration(hours: 1))),
-          isTrue);
-      expect(appointment.isUpcoming(now: start.add(const Duration(hours: 3))),
-          isFalse);
+      expect(
+        appointment.isUpcoming(now: start.add(const Duration(hours: 1))),
+        isTrue,
+      );
+      expect(
+        appointment.isUpcoming(now: start.add(const Duration(hours: 3))),
+        isFalse,
+      );
+    });
+
+    test('a cancelled booking is never upcoming', () {
+      final cancelled =
+          appointment.copyWith(status: AppointmentStatus.cancelled);
+
+      expect(
+        cancelled.isUpcoming(now: DateTime(2026, 1, 1)),
+        isFalse,
+        reason: 'cancelled outranks the clock',
+      );
     });
   });
 
@@ -109,12 +163,13 @@ void main() {
       expect(BookingProvider.availableHours, [10, 12, 14, 16, 18, 20]);
     });
 
-    test('combines the chosen date and hour into one instant', () {
+    test('combines the chosen date and hour into one slot', () {
       final booking = BookingProvider()
         ..selectDate(DateTime(2026, 8, 14, 9, 30))
         ..selectHour(16);
 
       // The time part of the picked date is discarded.
+      expect(booking.slot, Slot(DateTime(2026, 8, 14), 16));
       expect(booking.start, DateTime(2026, 8, 14, 16));
       expect(booking.end, DateTime(2026, 8, 14, 18));
     });
@@ -127,14 +182,29 @@ void main() {
       booking.selectDate(DateTime(2026, 8, 15));
 
       expect(booking.hour, isNull);
-      expect(booking.start, isNull);
+      expect(booking.slot, isNull);
+    });
+
+    test('clearHour undoes a slot that turned out to be taken', () {
+      final booking = BookingProvider()
+        ..selectDate(DateTime(2026, 8, 14))
+        ..selectHour(16);
+
+      booking.clearHour();
+
+      expect(booking.hour, isNull);
+      expect(booking.date, isNotNull, reason: 'the day is still chosen');
     });
 
     test('reset() empties every field', () {
       final booking = BookingProvider()
         ..selectDate(DateTime(2026, 8, 14))
         ..selectHour(16)
-        ..setDetails(firstName: 'Elif', lastName: 'Yilmaz', phone: '05551234567')
+        ..setDetails(
+          firstName: 'Elif',
+          lastName: 'Yilmaz',
+          phone: '(555) 123 45 67',
+        )
         ..selectService('gel_manicure');
 
       booking.reset();
@@ -145,74 +215,19 @@ void main() {
       expect(booking.serviceId, isNull);
     });
 
-    test('trims whitespace out of the customer details', () {
+    test('stores the phone as digits, whatever shape was typed', () {
       final booking = BookingProvider()
         ..setDetails(
           firstName: '  Elif ',
           lastName: ' Yilmaz  ',
-          phone: ' +90 555 123 45 67 ',
+          phone: '(555) 123 45 67',
         );
 
       expect(booking.firstName, 'Elif');
       expect(booking.lastName, 'Yilmaz');
-      expect(booking.phone, '+90 555 123 45 67');
-    });
-  });
-
-  group('AppointmentProvider', () {
-    test('persists appointments and reloads them sorted by start', () async {
-      final provider = AppointmentProvider();
-      await provider.load();
-
-      await provider.add(_appointmentAt(DateTime(2026, 8, 20, 12), id: 'later'));
-      await provider.add(_appointmentAt(DateTime(2026, 8, 14, 16), id: 'sooner'));
-
-      expect(
-        provider.appointments.map((a) => a.id),
-        ['sooner', 'later'],
-      );
-
-      // A fresh provider reads the same data back out of storage.
-      final reloaded = AppointmentProvider();
-      await reloaded.load();
-      expect(reloaded.appointments.map((a) => a.id), ['sooner', 'later']);
+      expect(booking.phone, '5551234567');
     });
 
-    test('flags a slot as taken once it is booked', () async {
-      final provider = AppointmentProvider();
-      await provider.load();
-
-      final slot = DateTime(2026, 8, 14, 16);
-      expect(provider.isSlotTaken(slot), isFalse);
-
-      await provider.add(_appointmentAt(slot));
-      expect(provider.isSlotTaken(slot), isTrue);
-      expect(provider.isSlotTaken(DateTime(2026, 8, 14, 18)), isFalse);
-    });
-
-    test('remove() deletes from memory and storage', () async {
-      final provider = AppointmentProvider();
-      await provider.load();
-      await provider.add(_appointmentAt(DateTime(2026, 8, 14, 16), id: 'x'));
-
-      await provider.remove('x');
-
-      expect(provider.appointments, isEmpty);
-      expect(await StorageService().loadAppointments(), isEmpty);
-    });
-
-    test('nextAppointment ignores anything already finished', () async {
-      final provider = AppointmentProvider();
-      await provider.load();
-
-      final past = DateTime.now().subtract(const Duration(days: 3));
-      final future = DateTime.now().add(const Duration(days: 3));
-      await provider.add(_appointmentAt(past, id: 'past'));
-      await provider.add(_appointmentAt(future, id: 'future'));
-
-      expect(provider.nextAppointment?.id, 'future');
-      expect(provider.past.map((a) => a.id), ['past']);
-    });
   });
 
   group('Formatting', () {
@@ -294,6 +309,17 @@ void main() {
       expect(mask('55512345679999'), '(555) 123 45 67');
     });
 
+    test('the stored digits match what the database accepts', () {
+      // profiles.phone and appointments.phone are checked against
+      // ^[1-9][0-9]{9}$ — ten digits, no leading zero.
+      final digits = TurkishPhoneInputFormatter.extractDigits(
+        '+90 555 123 45 67',
+      );
+
+      expect(digits, '5551234567');
+      expect(RegExp(r'^[1-9][0-9]{9}$').hasMatch(digits), isTrue);
+    });
+
     test('isComplete only accepts a full ten-digit number', () {
       expect(TurkishPhoneInputFormatter.isComplete('(555) 123 45 67'), isTrue);
       expect(TurkishPhoneInputFormatter.isComplete('+905551234567'), isTrue);
@@ -333,24 +359,59 @@ void main() {
       expect(result.selection.baseOffset, 5);
     });
 
-    test('display formatting re-masks legacy stored numbers', () {
+    test('display formatting re-masks stored digits', () {
+      expect(Fmt.phone('5551234567'), '(555) 123 45 67');
       expect(Fmt.phone('+90 555 123 45 67'), '(555) 123 45 67');
       // Anything unparseable is shown as-is rather than mangled.
       expect(Fmt.phone('123'), '123');
     });
   });
 
-  group('StorageService', () {
-    test('returns an empty list when nothing has been stored', () async {
-      expect(await StorageService().loadAppointments(), isEmpty);
+  group('LocalCache', () {
+    test('returns nothing when the device has never cached anything', () async {
+      expect(await LocalCache().readAppointments(), isEmpty);
+      expect(await LocalCache().readProfile(), isNull);
     });
 
-    test('recovers from corrupted stored data instead of throwing', () async {
+    test('round trips appointments and profile', () async {
+      final cache = LocalCache();
+      final appointment = _appointmentAt(Slot(DateTime(2026, 9, 4), 14));
+
+      await cache.writeAppointments([appointment]);
+      await cache.writeProfile(
+        const Profile(
+          id: 'user-1',
+          firstName: 'Ayse',
+          lastName: 'Celik',
+          phone: '5551234567',
+        ),
+      );
+
+      final appointments = await cache.readAppointments();
+      expect(appointments.single.id, appointment.id);
+      expect(appointments.single.slot, appointment.slot);
+      expect((await cache.readProfile())?.fullName, 'Ayse Celik');
+    });
+
+    test('recovers from corrupted data instead of throwing', () async {
       SharedPreferences.setMockInitialValues({
-        'minerva.appointments.v1': 'not json at all',
+        'minerva.cache.appointments.v2': 'not json at all',
+        'minerva.cache.profile.v2': '{{{',
       });
 
-      expect(await StorageService().loadAppointments(), isEmpty);
+      expect(await LocalCache().readAppointments(), isEmpty);
+      expect(await LocalCache().readProfile(), isNull);
+    });
+
+    test('clear() empties everything', () async {
+      final cache = LocalCache();
+      await cache.writeAppointments(
+        [_appointmentAt(Slot(DateTime(2026, 9, 4), 14))],
+      );
+
+      await cache.clear();
+
+      expect(await cache.readAppointments(), isEmpty);
     });
   });
 
@@ -398,6 +459,65 @@ void main() {
   });
 
   group('Widgets', () {
+    testWidgets('the splash screen leads into the app, in Turkish',
+        (tester) async {
+      // The test harness reports en_US by default, so ask for Turkish
+      // explicitly rather than relying on the fallback.
+      tester.platformDispatcher.localesTestValue = const [Locale('tr')];
+      addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+
+      await tester.pumpWidget(
+        MinervaApp(repository: FakeBookingRepository()),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('MINERVA'), findsOneWidget);
+      expect(find.text('Güzel tırnaklar,\nmükemmel zaman.'), findsOneWidget);
+
+      await tester.tap(find.text('Başlayalım'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Yeni Randevu'), findsOneWidget);
+      expect(find.text('Sonraki Randevum'), findsOneWidget);
+    });
+
+    testWidgets('an unsupported device language falls back to Turkish',
+        (tester) async {
+      tester.platformDispatcher.localesTestValue = const [Locale('de')];
+      addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+
+      await tester.pumpWidget(
+        MinervaApp(repository: FakeBookingRepository()),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Başlayalım'), findsOneWidget);
+    });
+
+    testWidgets('an English device gets English', (tester) async {
+      tester.platformDispatcher.localesTestValue = const [Locale('en')];
+      addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+
+      await tester.pumpWidget(
+        MinervaApp(repository: FakeBookingRepository()),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Get Started'), findsOneWidget);
+    });
+
+    testWidgets('a build without credentials says so instead of crashing',
+        (tester) async {
+      tester.platformDispatcher.localesTestValue = const [Locale('en')];
+      addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+
+      await tester.pumpWidget(const MinervaApp.unconfigured());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Setup required'), findsOneWidget);
+      expect(find.textContaining('SUPABASE_URL'), findsWidgets);
+    });
+
     testWidgets('the phone field masks digits as they are typed',
         (tester) async {
       await tester.pumpWidget(
@@ -447,12 +567,38 @@ void main() {
       expect(find.text('Bilgileriniz'), findsWidgets);
     });
 
+    testWidgets('a returning customer finds their details already filled in',
+        (tester) async {
+      final repo = FakeBookingRepository()
+        ..profile = const Profile(
+          id: 'user-1',
+          firstName: 'Ayse',
+          lastName: 'Celik',
+          phone: '5551234567',
+        );
+
+      await tester.pumpWidget(
+        _wrapBookingScreen(
+          const DetailsScreen(),
+          const Locale('tr'),
+          repository: repo,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ayse'), findsOneWidget);
+      expect(find.text('Celik'), findsOneWidget);
+      expect(find.text('(555) 123 45 67'), findsOneWidget);
+    });
+
     testWidgets('switching language on Profile re-renders the app',
         (tester) async {
       tester.platformDispatcher.localesTestValue = const [Locale('tr')];
       addTearDown(tester.platformDispatcher.clearLocalesTestValue);
 
-      await tester.pumpWidget(const MinervaApp());
+      await tester.pumpWidget(
+        MinervaApp(repository: FakeBookingRepository()),
+      );
       await tester.pumpAndSettle();
       await tester.tap(find.text('Başlayalım'));
       await tester.pumpAndSettle();
@@ -470,45 +616,124 @@ void main() {
       expect(find.text('Salon'), findsOneWidget);
     });
 
-    testWidgets('the splash screen leads into the app, in Turkish',
+    testWidgets('a guest sees the guest profile until they book',
         (tester) async {
-      // The test harness reports en_US by default, so ask for Turkish
-      // explicitly rather than relying on the fallback.
-      tester.platformDispatcher.localesTestValue = const [Locale('tr')];
-      addTearDown(tester.platformDispatcher.clearLocalesTestValue);
-
-      await tester.pumpWidget(const MinervaApp());
-      await tester.pumpAndSettle();
-
-      expect(find.text('MINERVA'), findsOneWidget);
-      expect(find.text('Güzel tırnaklar,\nmükemmel zaman.'), findsOneWidget);
-
-      await tester.tap(find.text('Başlayalım'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Yeni Randevu'), findsOneWidget);
-      expect(find.text('Sonraki Randevum'), findsOneWidget);
-    });
-
-    testWidgets('an unsupported device language falls back to Turkish',
-        (tester) async {
-      tester.platformDispatcher.localesTestValue = const [Locale('de')];
-      addTearDown(tester.platformDispatcher.clearLocalesTestValue);
-
-      await tester.pumpWidget(const MinervaApp());
-      await tester.pumpAndSettle();
-
-      expect(find.text('Başlayalım'), findsOneWidget);
-    });
-
-    testWidgets('an English device gets English', (tester) async {
       tester.platformDispatcher.localesTestValue = const [Locale('en')];
       addTearDown(tester.platformDispatcher.clearLocalesTestValue);
 
-      await tester.pumpWidget(const MinervaApp());
+      await tester.pumpWidget(
+        MinervaApp(repository: FakeBookingRepository()),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Get Started'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Profile'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Get Started'), findsOneWidget);
+      expect(find.text('Guest'), findsOneWidget);
+      expect(find.text('Book once to save your details'), findsOneWidget);
+    });
+
+    testWidgets('a saved profile replaces the guest placeholder',
+        (tester) async {
+      tester.platformDispatcher.localesTestValue = const [Locale('en')];
+      addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+
+      final repo = FakeBookingRepository()
+        ..profile = const Profile(
+          id: 'user-1',
+          firstName: 'Ayse',
+          lastName: 'Celik',
+          phone: '5551234567',
+        );
+
+      await tester.pumpWidget(MinervaApp(repository: repo));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Get Started'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Profile'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ayse Celik'), findsOneWidget);
+      expect(find.text('(555) 123 45 67'), findsOneWidget);
+      expect(find.text('Guest'), findsNothing);
+    });
+
+    testWidgets('losing the race tells the customer and clears their slot',
+        (tester) async {
+      final slot = Slot(DateTime.now().add(const Duration(days: 2)), 16);
+
+      final repo = FakeBookingRepository()
+        ..failOnBook = const SlotTakenException();
+
+      final booking = BookingProvider()
+        ..selectDate(slot.date)
+        ..selectHour(slot.hour)
+        ..setDetails(
+          firstName: 'Ayse',
+          lastName: 'Celik',
+          phone: '(555) 123 45 67',
+        );
+
+      final availability = AvailabilityProvider(repo);
+      final appointments = AppointmentProvider(repo);
+      await appointments.load();
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider.value(value: booking),
+            ChangeNotifierProvider.value(value: appointments),
+            ChangeNotifierProvider.value(value: availability),
+          ],
+          child: MaterialApp(
+            locale: const Locale('en'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const ReviewScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Confirm Appointment'));
+      await tester.pumpAndSettle();
+
+      // The customer is told, plainly, and not left staring at a crash.
+      expect(
+        find.text('Someone else just booked that time. Please pick another one.'),
+        findsOneWidget,
+      );
+
+      // The slot is now shown as taken, and their choice has been cleared so
+      // they cannot simply confirm the same one again.
+      expect(availability.isTaken(slot), isTrue);
+      expect(booking.hour, isNull);
+      expect(booking.date, isNotNull, reason: 'the day is still chosen');
+
+      // Nothing was saved.
+      expect(appointments.upcoming, isEmpty);
+    });
+
+    testWidgets('a failed load never claims the customer has no appointments',
+        (tester) async {
+      tester.platformDispatcher.localesTestValue = const [Locale('en')];
+      addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+
+      final repo = FakeBookingRepository()
+        ..failOnLoad = const BookingOfflineException();
+
+      await tester.pumpWidget(MinervaApp(repository: repo));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Get Started'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Could not connect. Check your internet and try again.'),
+        findsOneWidget,
+      );
+      expect(find.text('No appointment yet'), findsNothing);
+      expect(find.text('Try again'), findsOneWidget);
     });
 
     testWidgets('"Select Time" stays disabled until a day is picked',
@@ -520,12 +745,16 @@ void main() {
       addTearDown(tester.view.reset);
 
       final booking = BookingProvider();
+      final repo = FakeBookingRepository();
 
       await tester.pumpWidget(
         MultiProvider(
           providers: [
             ChangeNotifierProvider.value(value: booking),
-            ChangeNotifierProvider(create: (_) => AppointmentProvider()..load()),
+            ChangeNotifierProvider(
+              create: (_) => AppointmentProvider(repo)..load(),
+            ),
+            ChangeNotifierProvider(create: (_) => AvailabilityProvider(repo)),
           ],
           child: MaterialApp(
             locale: const Locale('en'),
@@ -557,15 +786,4 @@ void main() {
       expect(buttonOpacity().opacity, 1);
     });
   });
-}
-
-/// Builds a throwaway appointment at [start] for storage/provider tests.
-Appointment _appointmentAt(DateTime start, {String id = 'test'}) {
-  return Appointment(
-    id: id,
-    start: start,
-    firstName: 'Test',
-    lastName: 'Customer',
-    phone: '05551234567',
-  );
 }

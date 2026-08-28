@@ -304,6 +304,52 @@ class AppLocalizationsTr extends AppLocalizations {
   }
 
   @override
+  String get slotJustTaken =>
+      'Bu saat az önce başkası tarafından alındı. Lütfen başka bir saat seçin.';
+
+  @override
+  String get slotInThePast => 'Bu saat geçti. Lütfen ileri bir tarih seçin.';
+
+  @override
+  String get connectionProblem =>
+      'Bağlantı kurulamadı. İnternetinizi kontrol edip tekrar deneyin.';
+
+  @override
+  String get somethingWentWrong =>
+      'Bir şeyler ters gitti. Lütfen tekrar deneyin.';
+
+  @override
+  String get retry => 'Tekrar dene';
+
+  @override
+  String get loadingAvailability => 'Uygun saatler yükleniyor…';
+
+  @override
+  String get availabilityUnavailable =>
+      'Dolu saatler alınamadı. Seçiminiz onay sırasında kontrol edilecek.';
+
+  @override
+  String get offlineShowingCached =>
+      'Çevrimdışısınız. Son bilinen randevularınız gösteriliyor.';
+
+  @override
+  String get couldNotLoadAppointments => 'Randevularınız yüklenemedi.';
+
+  @override
+  String get booking => 'Randevu oluşturuluyor…';
+
+  @override
+  String get anonymousSignInDisabled =>
+      'Supabase projesinde anonim girişler kapalı. Authentication → Providers bölümünden açıp uygulamayı yeniden başlatın.';
+
+  @override
+  String get setupRequiredTitle => 'Kurulum gerekli';
+
+  @override
+  String get setupRequiredMessage =>
+      'Uygulama Supabase bilgileri olmadan derlenmiş. SUPABASE_URL ve SUPABASE_ANON_KEY değerlerini --dart-define ile verip yeniden başlatın.';
+
+  @override
   String get language => 'Dil';
 
   @override

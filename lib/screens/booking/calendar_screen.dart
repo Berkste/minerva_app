@@ -116,11 +116,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 // Stays disabled until a day is chosen.
                 onPressed: selected == null
                     ? null
-                    : () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const TimeScreen(),
-                          ),
-                        ),
+                    : () => Navigator.of(context).push(TimeScreen.route()),
               ),
             ),
           ],

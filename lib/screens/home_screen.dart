@@ -6,6 +6,7 @@ import '../models/salon_service.dart';
 import '../providers/appointment_provider.dart';
 import '../providers/booking_provider.dart';
 import '../theme/app_colors.dart';
+import '../utils/error_messages.dart';
 import '../widgets/appointment_card.dart';
 import '../widgets/common.dart';
 import '../widgets/gradient_button.dart';
@@ -82,6 +83,13 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(height: 12),
             if (appointments.isLoading)
               const _CardPlaceholder()
+            else if (appointments.state == LoadState.failed)
+              // Never claim "no appointments" when the truth is "could not
+              // ask" — the customer may well have one.
+              _LoadFailedCard(
+                message: messageFor(l10n, appointments.error!),
+                onRetry: appointments.load,
+              )
             else if (next == null)
               const _NoUpcomingCard()
             else
@@ -252,6 +260,66 @@ class _CardPlaceholder extends StatelessWidget {
             color: AppColors.purple.withValues(alpha: 0.7),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Shown when the appointment list could not be fetched at all.
+class _LoadFailedCard extends StatelessWidget {
+  const _LoadFailedCard({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+
+    return SoftCard(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: const BoxDecoration(
+                  color: AppColors.lightPurple,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.cloud_off_rounded,
+                  size: 20,
+                  color: AppColors.purple,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  message,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                    fontSize: 12.5,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded, size: 16),
+              label: Text(l10n.retry, style: const TextStyle(fontSize: 12.5)),
+            ),
+          ),
+        ],
       ),
     );
   }

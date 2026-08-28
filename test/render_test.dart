@@ -6,6 +6,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:minerva_app/l10n/app_localizations.dart';
 import 'package:minerva_app/models/appointment.dart';
+import 'package:minerva_app/models/profile.dart';
+import 'package:minerva_app/models/slot.dart';
+import 'package:minerva_app/providers/availability_provider.dart';
+import 'package:minerva_app/screens/setup_required_screen.dart';
 import 'package:minerva_app/providers/appointment_provider.dart';
 import 'package:minerva_app/providers/booking_provider.dart';
 import 'package:minerva_app/providers/locale_provider.dart';
@@ -21,6 +25,8 @@ import 'package:minerva_app/screens/main_shell.dart';
 import 'package:minerva_app/screens/profile_screen.dart';
 import 'package:minerva_app/screens/splash_screen.dart';
 import 'package:minerva_app/theme/app_theme.dart';
+
+import 'fake_booking_repository.dart';
 
 /// Renders every screen at several phone sizes and text scales.
 ///
@@ -46,12 +52,15 @@ void main() {
   // screens, so both languages have to be checked for overflow.
   final locales = LocaleProvider.supportedLocales;
 
+  final sampleSlot = Slot(DateTime.now().add(const Duration(days: 3)), 16);
+
   final sampleAppointment = Appointment(
     id: 'sample',
-    start: DateTime.now().add(const Duration(days: 3)),
+    userId: 'user-1',
+    slot: sampleSlot,
     firstName: 'Elif',
     lastName: 'Yilmaz',
-    phone: '+90 555 123 45 67',
+    phone: '5551234567',
     serviceId: 'classic_manicure',
   );
 
@@ -78,6 +87,7 @@ void main() {
     'Success': () => SuccessScreen(appointment: sampleAppointment),
     'Appointments': () => const AppointmentsScreen(),
     'Profile': () => const ProfileScreen(),
+    'SetupRequired': () => const SetupRequiredScreen(),
   };
 
   for (final locale in locales) {
@@ -94,15 +104,26 @@ void main() {
                 tester.view.devicePixelRatio = 3;
                 addTearDown(tester.view.reset);
 
-                final appointments = AppointmentProvider();
+                final repo = FakeBookingRepository()
+                  ..appointments.add(sampleAppointment)
+                  ..profile = const Profile(
+                    id: 'user-1',
+                    firstName: 'Elif',
+                    lastName: 'Yilmaz',
+                    phone: '5551234567',
+                  );
+
+                final appointments = AppointmentProvider(repo);
                 await appointments.load();
-                await appointments.add(sampleAppointment);
 
                 await tester.pumpWidget(
                   MultiProvider(
                     providers: [
                       ChangeNotifierProvider.value(value: appointments),
                       ChangeNotifierProvider.value(value: filledBooking()),
+                      ChangeNotifierProvider(
+                        create: (_) => AvailabilityProvider(repo),
+                      ),
                       ChangeNotifierProvider(create: (_) => LocaleProvider()),
                     ],
                     child: MaterialApp(

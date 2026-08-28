@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../../providers/appointment_provider.dart';
 import '../../providers/booking_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/phone_formatter.dart';
@@ -29,6 +30,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
     super.initState();
     // Pre-fill from the draft so going back and forth never loses typing.
     final booking = context.read<BookingProvider>();
+
     _firstName = TextEditingController(text: booking.firstName);
     _lastName = TextEditingController(text: booking.lastName);
     // Re-mask on the way in, so a number saved in another shape still shows
@@ -38,6 +40,29 @@ class _DetailsScreenState extends State<DetailsScreen> {
         TurkishPhoneInputFormatter.extractDigits(booking.phone),
       ),
     );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    // A returning customer should not retype what the salon already knows.
+    // This runs again when the profile finishes loading, so the prefill still
+    // happens if the customer got here before the first fetch came back.
+    final profile = Provider.of<AppointmentProvider>(context).profile;
+    if (profile == null) return;
+
+    // Straight into the controllers: they are what the form reads, and the
+    // booking draft is updated from them on Continue. Writing to the provider
+    // here would notify listeners mid-build.
+    // Only fill what the customer has not already typed over.
+    if (_firstName.text.isEmpty) _firstName.text = profile.firstName;
+    if (_lastName.text.isEmpty) _lastName.text = profile.lastName;
+    if (_phone.text.isEmpty) {
+      _phone.text = TurkishPhoneInputFormatter.format(
+        TurkishPhoneInputFormatter.extractDigits(profile.phone),
+      );
+    }
   }
 
   @override
