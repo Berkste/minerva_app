@@ -358,4 +358,58 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get languageEnglish => 'English';
+
+  @override
+  String get adminStaffLogin => 'Staff login';
+
+  @override
+  String get adminLoginTitle => 'Admin Login';
+
+  @override
+  String get adminLoginSubtitle => 'Sign in with your staff account';
+
+  @override
+  String get adminEmail => 'Email';
+
+  @override
+  String get adminPassword => 'Password';
+
+  @override
+  String get adminEmailRequired => 'Please enter your email.';
+
+  @override
+  String get adminPasswordRequired => 'Please enter your password.';
+
+  @override
+  String get adminSignIn => 'Sign In';
+
+  @override
+  String get adminInvalidCredentials => 'Incorrect email or password.';
+
+  @override
+  String get adminNotAuthorized =>
+      'This account is not authorized as an admin.';
+
+  @override
+  String get adminAppointmentsTitle => 'All Appointments';
+
+  @override
+  String get adminSignOut => 'Sign Out';
+
+  @override
+  String get adminUpcoming => 'Upcoming';
+
+  @override
+  String get adminNoAppointmentsTitle => 'No upcoming appointments';
+
+  @override
+  String get adminNoAppointmentsMessage => 'New bookings will appear here.';
+
+  @override
+  String get adminCouldNotLoad => 'Could not load appointments.';
+
+  @override
+  String adminCancelConfirmBody(String name, String date, String time) {
+    return '$name\'s appointment on $date at $time will be cancelled.';
+  }
 }

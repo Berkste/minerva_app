@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../admin/admin_app.dart';
 import '../l10n/app_localizations.dart';
 import '../models/appointment.dart';
 import '../providers/appointment_provider.dart';
@@ -150,11 +151,22 @@ class ProfileScreen extends StatelessWidget {
             const Center(child: MinervaLogo(markSize: 40, titleSize: 20)),
             const SizedBox(height: 12),
             Center(
-              child: Text(
-                l10n.version('1.0.0'),
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: AppColors.textTertiary,
-                  fontSize: 11,
+              // A long-press on the version line opens staff login. Deliberately
+              // undiscoverable to customers: no label, no button — staff are
+              // told about it. The real gate is the admin auth + RLS, not this.
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onLongPress: () =>
+                    Navigator.of(context).push(AdminApp.route()),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 24),
+                  child: Text(
+                    l10n.version('1.0.0'),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: AppColors.textTertiary,
+                      fontSize: 11,
+                    ),
+                  ),
                 ),
               ),
             ),

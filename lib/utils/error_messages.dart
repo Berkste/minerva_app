@@ -12,6 +12,8 @@ String messageFor(AppLocalizations l10n, BookingException failure) {
     BookingOfflineException() => l10n.connectionProblem,
     BookingNotConfiguredException() => l10n.setupRequiredMessage,
     AnonymousSignInDisabledException() => l10n.anonymousSignInDisabled,
+    InvalidAdminCredentialsException() => l10n.adminInvalidCredentials,
+    NotAnAdminException() => l10n.adminNotAuthorized,
     BookingFailedException() => l10n.somethingWentWrong,
   };
 }

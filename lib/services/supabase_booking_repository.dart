@@ -170,6 +170,86 @@ class SupabaseBookingRepository implements BookingRepository {
     return Profile.fromRow(row);
   }
 
+  // --- Admin / employee ----------------------------------------------------
+
+  @override
+  Future<void> adminSignIn({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      await _client.auth.signInWithPassword(
+        email: email.trim(),
+        password: password,
+      );
+    } on AuthException {
+      // Wrong email or password — surface it as such, not as a generic error.
+      throw const InvalidAdminCredentialsException();
+    } on SocketException {
+      throw const BookingOfflineException();
+    } on TimeoutException {
+      throw const BookingOfflineException();
+    }
+
+    // Authenticating is not authorization. Confirm staff membership against the
+    // database — the admins RLS policy returns the row only if this user is one
+    // — and if not, drop the session again so a non-staff login leaves nothing.
+    if (!await isCurrentUserAdmin()) {
+      await adminSignOut();
+      throw const NotAnAdminException();
+    }
+  }
+
+  @override
+  Future<bool> isCurrentUserAdmin() async {
+    final id = currentUserId;
+    if (id == null) return false;
+
+    final row = await _guard(
+      () => _client.from('admins').select('id').eq('id', id).maybeSingle(),
+    );
+    return row != null;
+  }
+
+  @override
+  Future<List<Appointment>> fetchAllUpcomingAppointments() async {
+    // The admin select-all policy makes this return every customer's rows.
+    // Filtering to confirmed here; "upcoming vs finished" is decided in the
+    // provider against the clock, same as the customer list.
+    final rows = await _guard(
+      () => _client
+          .from('appointments')
+          .select()
+          .eq('status', 'confirmed')
+          .order('slot_date')
+          .order('slot_hour'),
+    );
+
+    return rows
+        .cast<Map<String, dynamic>>()
+        .map(Appointment.fromRow)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<void> adminCancel(String appointmentId) async {
+    // No user_id filter: the admin update policy authorises cancelling any
+    // customer's booking. Cancelling frees the slot via the existing partial
+    // unique index — no separate mechanism.
+    await _guard(
+      () => _client
+          .from('appointments')
+          .update({
+            'status': 'cancelled',
+            'cancelled_at': DateTime.now().toUtc().toIso8601String(),
+          })
+          .eq('id', appointmentId),
+    );
+  }
+
+  @override
+  Future<void> adminSignOut() => _client.auth.signOut();
+
   String _requireUserId() {
     final id = currentUserId;
     if (id == null) {

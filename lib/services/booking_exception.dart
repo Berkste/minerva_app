@@ -40,6 +40,22 @@ class AnonymousSignInDisabledException extends BookingException {
   const AnonymousSignInDisabledException();
 }
 
+/// Admin sign-in was rejected: wrong email or password.
+///
+/// Kept distinct from a generic failure so the login screen can say "check
+/// your credentials" rather than "something went wrong".
+class InvalidAdminCredentialsException extends BookingException {
+  const InvalidAdminCredentialsException();
+}
+
+/// The sign-in succeeded, but the account is not a staff member.
+///
+/// Authenticating is not the same as being authorized: a valid Supabase user
+/// who is not in the `admins` table is signed straight back out and refused.
+class NotAnAdminException extends BookingException {
+  const NotAnAdminException();
+}
+
 /// Anything else: an outage, a schema mismatch, a bug.
 class BookingFailedException extends BookingException {
   const BookingFailedException(this.detail);

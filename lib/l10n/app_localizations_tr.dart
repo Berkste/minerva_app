@@ -360,4 +360,57 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get languageEnglish => 'İngilizce';
+
+  @override
+  String get adminStaffLogin => 'Personel girişi';
+
+  @override
+  String get adminLoginTitle => 'Yönetici Girişi';
+
+  @override
+  String get adminLoginSubtitle => 'Personel hesabınızla giriş yapın';
+
+  @override
+  String get adminEmail => 'E-posta';
+
+  @override
+  String get adminPassword => 'Şifre';
+
+  @override
+  String get adminEmailRequired => 'Lütfen e-postanızı girin.';
+
+  @override
+  String get adminPasswordRequired => 'Lütfen şifrenizi girin.';
+
+  @override
+  String get adminSignIn => 'Giriş Yap';
+
+  @override
+  String get adminInvalidCredentials => 'E-posta veya şifre hatalı.';
+
+  @override
+  String get adminNotAuthorized => 'Bu hesabın yönetici yetkisi yok.';
+
+  @override
+  String get adminAppointmentsTitle => 'Tüm Randevular';
+
+  @override
+  String get adminSignOut => 'Çıkış Yap';
+
+  @override
+  String get adminUpcoming => 'Yaklaşan';
+
+  @override
+  String get adminNoAppointmentsTitle => 'Yaklaşan randevu yok';
+
+  @override
+  String get adminNoAppointmentsMessage => 'Yeni randevular burada görünecek.';
+
+  @override
+  String get adminCouldNotLoad => 'Randevular yüklenemedi.';
+
+  @override
+  String adminCancelConfirmBody(String name, String date, String time) {
+    return '$name adlı müşterinin $date tarihli $time randevusu iptal edilecek.';
+  }
 }

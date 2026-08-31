@@ -126,5 +126,23 @@
   "language": "Language",
   "languageSystem": "System default",
   "languageTurkish": "Turkish",
-  "languageEnglish": "English"
+  "languageEnglish": "English",
+
+  "adminStaffLogin": "Staff login",
+  "adminLoginTitle": "Admin Login",
+  "adminLoginSubtitle": "Sign in with your staff account",
+  "adminEmail": "Email",
+  "adminPassword": "Password",
+  "adminEmailRequired": "Please enter your email.",
+  "adminPasswordRequired": "Please enter your password.",
+  "adminSignIn": "Sign In",
+  "adminInvalidCredentials": "Incorrect email or password.",
+  "adminNotAuthorized": "This account is not authorized as an admin.",
+  "adminAppointmentsTitle": "All Appointments",
+  "adminSignOut": "Sign Out",
+  "adminUpcoming": "Upcoming",
+  "adminNoAppointmentsTitle": "No upcoming appointments",
+  "adminNoAppointmentsMessage": "New bookings will appear here.",
+  "adminCouldNotLoad": "Could not load appointments.",
+  "adminCancelConfirmBody": "{name}'s appointment on {date} at {time} will be cancelled."
 }

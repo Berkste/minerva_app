@@ -139,5 +139,24 @@
   "language": "Dil",
   "languageSystem": "Cihaz dili",
   "languageTurkish": "Türkçe",
-  "languageEnglish": "İngilizce"
+  "languageEnglish": "İngilizce",
+
+  "adminStaffLogin": "Personel girişi",
+  "adminLoginTitle": "Yönetici Girişi",
+  "adminLoginSubtitle": "Personel hesabınızla giriş yapın",
+  "adminEmail": "E-posta",
+  "adminPassword": "Şifre",
+  "adminEmailRequired": "Lütfen e-postanızı girin.",
+  "adminPasswordRequired": "Lütfen şifrenizi girin.",
+  "adminSignIn": "Giriş Yap",
+  "adminInvalidCredentials": "E-posta veya şifre hatalı.",
+  "adminNotAuthorized": "Bu hesabın yönetici yetkisi yok.",
+  "adminAppointmentsTitle": "Tüm Randevular",
+  "adminSignOut": "Çıkış Yap",
+  "adminUpcoming": "Yaklaşan",
+  "adminNoAppointmentsTitle": "Yaklaşan randevu yok",
+  "adminNoAppointmentsMessage": "Yeni randevular burada görünecek.",
+  "adminCouldNotLoad": "Randevular yüklenemedi.",
+  "adminCancelConfirmBody": "{name} adlı müşterinin {date} tarihli {time} randevusu iptal edilecek.",
+  "@adminCancelConfirmBody": { "placeholders": { "name": { "type": "String" }, "date": { "type": "String" }, "time": { "type": "String" } } }
 }

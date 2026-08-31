@@ -47,4 +47,31 @@ abstract interface class BookingRepository {
     required String lastName,
     required String phone,
   });
+
+  // --- Admin / employee ----------------------------------------------------
+  // These succeed only for a caller the database recognises as staff. The
+  // authorization is enforced by RLS (the `is_admin()` policies), not by the
+  // app; the methods here are just how the admin screens reach it.
+
+  /// Signs in a staff member with email + password and confirms they are
+  /// actually an admin.
+  ///
+  /// Throws [InvalidAdminCredentialsException] when the email/password is
+  /// wrong, and [NotAnAdminException] when the credentials are valid but the
+  /// account is not staff (in which case the session is dropped again).
+  Future<void> adminSignIn({required String email, required String password});
+
+  /// True when the current session belongs to a staff member. Answered by the
+  /// database: RLS returns the caller's `admins` row only if they are one.
+  Future<bool> isCurrentUserAdmin();
+
+  /// Every confirmed, not-yet-finished appointment across all customers,
+  /// soonest first. Returns rows only for a staff caller (admin RLS policy).
+  Future<List<Appointment>> fetchAllUpcomingAppointments();
+
+  /// Cancels any customer's appointment, releasing its slot. Staff-only.
+  Future<void> adminCancel(String appointmentId);
+
+  /// Ends the staff session.
+  Future<void> adminSignOut();
 }
