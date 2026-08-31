@@ -1,8 +1,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The app is useless without a network: every screen talks to Supabase.
+         Only debug/profile manifests carry this by default, so a release build
+         merges without it and cannot reach the backend at all. It must be
+         declared here to reach the release manifest. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
     <application
-        android:label="minerva_app"
+        android:label="Minerva"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false">
         <activity
             android:name=".MainActivity"
             android:exported="true"
