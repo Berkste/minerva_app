@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'app_colors.dart';
 
@@ -27,8 +26,13 @@ class AppTheme {
       scaffoldBackgroundColor: AppColors.background,
     );
 
-    // Poppins across the board, re-coloured to the Minerva text ramp.
-    final textTheme = GoogleFonts.poppinsTextTheme(base.textTheme).apply(
+    // Poppins across the board, re-coloured to the Minerva text ramp. The
+    // family is bundled as an asset (see pubspec.yaml), so applying it by name
+    // keeps every style's default weight while never touching the network —
+    // the same result the google_fonts package produced, minus the runtime
+    // fetch.
+    final textTheme = base.textTheme.apply(
+      fontFamily: 'Poppins',
       bodyColor: AppColors.textPrimary,
       displayColor: AppColors.textPrimary,
     );
