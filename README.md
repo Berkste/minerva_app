@@ -176,9 +176,10 @@ anything that cannot be parsed is shown unchanged rather than mangled.
 | White | `#FFFFFF` |
 | Light purple | `#F3E8FF` |
 
-Typography is Poppins (via `google_fonts`). Corner radius, card surface, field
-decoration and button geometry are defined once in `lib/theme/app_theme.dart`,
-so screens stay declarative.
+Typography is Poppins, bundled as an asset under `assets/fonts/` (weights
+400/500/600/700, licensed OFL) so the app never fetches it at runtime. Corner
+radius, card surface, field decoration and button geometry are defined once in
+`lib/theme/app_theme.dart`, so screens stay declarative.
 
 The logo is drawn with a `CustomPainter` (`lib/widgets/minerva_logo.dart`)
 rather than shipped as an image — it stays crisp at any size and the app needs

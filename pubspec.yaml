@@ -23,9 +23,6 @@ dependencies:
   # Local persistence of appointments (key/value JSON store).
   shared_preferences: ^2.3.3
 
-  # Poppins typography, as specified by the design.
-  google_fonts: ^6.2.1
-
   # Locale-aware date/time formatting ("Friday, 14 August 2026").
   intl: ^0.20.2
   supabase_flutter: ^2.17.2
@@ -41,3 +38,19 @@ flutter:
 
   # Generates AppLocalizations from lib/l10n/*.arb (see l10n.yaml).
   generate: true
+
+  # Poppins bundled as an asset, so the app never fetches it from Google at
+  # runtime (audit finding H-2). Weights match what the UI uses: 400 Regular,
+  # 500 Medium, 600 SemiBold, plus 700 Bold for the Material text styles that
+  # default to it. Licensed OFL — see assets/fonts/Poppins-OFL.txt.
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Poppins-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Poppins-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Poppins-Bold.ttf
+          weight: 700

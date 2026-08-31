@@ -1,0 +1,4 @@
+# The bundled Poppins font files are binary. Mark them explicitly so no git
+# config anywhere ever applies line-ending conversion and corrupts them.
+*.ttf binary
+*.otf binary
