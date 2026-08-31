@@ -31,6 +31,17 @@ class FakeBookingRepository implements BookingRepository {
   /// booking in at exactly the wrong moment.
   Future<void> Function()? onBeforeBook;
 
+  // --- Admin test knobs ----------------------------------------------------
+  /// The one credential pair that authenticates as staff in tests.
+  String validAdminEmail = 'admin@minerva.test';
+  String validAdminPassword = 'correct-horse';
+
+  /// Whether those valid credentials actually belong to a staff member. Set
+  /// false to test the "authenticated but not authorized" path.
+  bool credentialsAreAdmin = true;
+
+  bool _adminSignedIn = false;
+
   int _nextId = 1;
 
   @override
@@ -125,6 +136,55 @@ class FakeBookingRepository implements BookingRepository {
     );
     return profile!;
   }
+
+  // --- Admin / employee ----------------------------------------------------
+
+  @override
+  Future<void> adminSignIn({
+    required String email,
+    required String password,
+  }) async {
+    if (email.trim() != validAdminEmail || password != validAdminPassword) {
+      throw const InvalidAdminCredentialsException();
+    }
+    _adminSignedIn = true;
+    if (!credentialsAreAdmin) {
+      await adminSignOut();
+      throw const NotAnAdminException();
+    }
+  }
+
+  @override
+  Future<bool> isCurrentUserAdmin() async =>
+      _adminSignedIn && credentialsAreAdmin;
+
+  @override
+  Future<List<Appointment>> fetchAllUpcomingAppointments() async {
+    final failure = failOnLoad;
+    if (failure != null) throw failure;
+
+    // Mirrors RLS: a non-staff caller sees nothing, not everyone's rows.
+    if (!await isCurrentUserAdmin()) return [];
+
+    final now = DateTime.now();
+    return appointments
+        .where((a) => a.isUpcoming(now: now))
+        .toList()
+      ..sort((a, b) => a.start.compareTo(b.start));
+  }
+
+  @override
+  Future<void> adminCancel(String appointmentId) async {
+    // RLS would refuse a non-admin; the fake refuses too.
+    if (!await isCurrentUserAdmin()) return;
+    final index = appointments.indexWhere((a) => a.id == appointmentId);
+    if (index == -1) return;
+    appointments[index] =
+        appointments[index].copyWith(status: AppointmentStatus.cancelled);
+  }
+
+  @override
+  Future<void> adminSignOut() async => _adminSignedIn = false;
 
   /// Books as a different customer — used to occupy a slot from "outside".
   Appointment bookAsSomeoneElse(Slot slot, {String otherUserId = 'user-2'}) {

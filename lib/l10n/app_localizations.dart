@@ -751,6 +751,108 @@ abstract class AppLocalizations {
   /// In tr, this message translates to:
   /// **'İngilizce'**
   String get languageEnglish;
+
+  /// No description provided for @adminStaffLogin.
+  ///
+  /// In tr, this message translates to:
+  /// **'Personel girişi'**
+  String get adminStaffLogin;
+
+  /// No description provided for @adminLoginTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Yönetici Girişi'**
+  String get adminLoginTitle;
+
+  /// No description provided for @adminLoginSubtitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Personel hesabınızla giriş yapın'**
+  String get adminLoginSubtitle;
+
+  /// No description provided for @adminEmail.
+  ///
+  /// In tr, this message translates to:
+  /// **'E-posta'**
+  String get adminEmail;
+
+  /// No description provided for @adminPassword.
+  ///
+  /// In tr, this message translates to:
+  /// **'Şifre'**
+  String get adminPassword;
+
+  /// No description provided for @adminEmailRequired.
+  ///
+  /// In tr, this message translates to:
+  /// **'Lütfen e-postanızı girin.'**
+  String get adminEmailRequired;
+
+  /// No description provided for @adminPasswordRequired.
+  ///
+  /// In tr, this message translates to:
+  /// **'Lütfen şifrenizi girin.'**
+  String get adminPasswordRequired;
+
+  /// No description provided for @adminSignIn.
+  ///
+  /// In tr, this message translates to:
+  /// **'Giriş Yap'**
+  String get adminSignIn;
+
+  /// No description provided for @adminInvalidCredentials.
+  ///
+  /// In tr, this message translates to:
+  /// **'E-posta veya şifre hatalı.'**
+  String get adminInvalidCredentials;
+
+  /// No description provided for @adminNotAuthorized.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bu hesabın yönetici yetkisi yok.'**
+  String get adminNotAuthorized;
+
+  /// No description provided for @adminAppointmentsTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Tüm Randevular'**
+  String get adminAppointmentsTitle;
+
+  /// No description provided for @adminSignOut.
+  ///
+  /// In tr, this message translates to:
+  /// **'Çıkış Yap'**
+  String get adminSignOut;
+
+  /// No description provided for @adminUpcoming.
+  ///
+  /// In tr, this message translates to:
+  /// **'Yaklaşan'**
+  String get adminUpcoming;
+
+  /// No description provided for @adminNoAppointmentsTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Yaklaşan randevu yok'**
+  String get adminNoAppointmentsTitle;
+
+  /// No description provided for @adminNoAppointmentsMessage.
+  ///
+  /// In tr, this message translates to:
+  /// **'Yeni randevular burada görünecek.'**
+  String get adminNoAppointmentsMessage;
+
+  /// No description provided for @adminCouldNotLoad.
+  ///
+  /// In tr, this message translates to:
+  /// **'Randevular yüklenemedi.'**
+  String get adminCouldNotLoad;
+
+  /// No description provided for @adminCancelConfirmBody.
+  ///
+  /// In tr, this message translates to:
+  /// **'{name} adlı müşterinin {date} tarihli {time} randevusu iptal edilecek.'**
+  String adminCancelConfirmBody(String name, String date, String time);
 }
 
 class _AppLocalizationsDelegate
