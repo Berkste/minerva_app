@@ -395,6 +395,12 @@ class AppLocalizationsTr extends AppLocalizations {
   String get adminAppointmentsTitle => 'Tüm Randevular';
 
   @override
+  String get adminScheduleTitle => 'Randevu Takvimi';
+
+  @override
+  String get adminToday => 'Bugün';
+
+  @override
   String get adminSignOut => 'Çıkış Yap';
 
   @override
@@ -405,6 +411,21 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get adminNoAppointmentsMessage => 'Yeni randevular burada görünecek.';
+
+  @override
+  String get adminNoAppointmentsOnDay => 'Bu gün için randevu yok.';
+
+  @override
+  String adminDayAppointmentCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count randevu',
+      one: '1 randevu',
+      zero: 'Randevu yok',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get adminCouldNotLoad => 'Randevular yüklenemedi.';

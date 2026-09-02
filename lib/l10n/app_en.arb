@@ -139,10 +139,15 @@
   "adminInvalidCredentials": "Incorrect email or password.",
   "adminNotAuthorized": "This account is not authorized as an admin.",
   "adminAppointmentsTitle": "All Appointments",
+  "adminScheduleTitle": "Schedule",
+  "adminToday": "Today",
   "adminSignOut": "Sign Out",
   "adminUpcoming": "Upcoming",
   "adminNoAppointmentsTitle": "No upcoming appointments",
   "adminNoAppointmentsMessage": "New bookings will appear here.",
+  "adminNoAppointmentsOnDay": "No appointments on this day.",
+  "adminDayAppointmentCount": "{count, plural, =0{No appointments} =1{1 appointment} other{{count} appointments}}",
+  "@adminDayAppointmentCount": { "placeholders": { "count": { "type": "int" } } },
   "adminCouldNotLoad": "Could not load appointments.",
   "adminCancelConfirmBody": "{name}'s appointment on {date} at {time} will be cancelled."
 }

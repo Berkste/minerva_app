@@ -65,9 +65,11 @@ abstract interface class BookingRepository {
   /// database: RLS returns the caller's `admins` row only if they are one.
   Future<bool> isCurrentUserAdmin();
 
-  /// Every confirmed, not-yet-finished appointment across all customers,
-  /// soonest first. Returns rows only for a staff caller (admin RLS policy).
-  Future<List<Appointment>> fetchAllUpcomingAppointments();
+  /// Every confirmed appointment whose day falls between [from] and [to]
+  /// (inclusive), across all customers, soonest first. Past and future days
+  /// alike — the admin calendar shows any day. Returns rows only for a staff
+  /// caller (admin RLS policy).
+  Future<List<Appointment>> fetchAppointmentsInRange(DateTime from, DateTime to);
 
   /// Cancels any customer's appointment, releasing its slot. Staff-only.
   Future<void> adminCancel(String appointmentId);

@@ -159,16 +159,24 @@ class FakeBookingRepository implements BookingRepository {
       _adminSignedIn && credentialsAreAdmin;
 
   @override
-  Future<List<Appointment>> fetchAllUpcomingAppointments() async {
+  Future<List<Appointment>> fetchAppointmentsInRange(
+    DateTime from,
+    DateTime to,
+  ) async {
     final failure = failOnLoad;
     if (failure != null) throw failure;
 
     // Mirrors RLS: a non-staff caller sees nothing, not everyone's rows.
     if (!await isCurrentUserAdmin()) return [];
 
-    final now = DateTime.now();
+    final fromDay = DateTime(from.year, from.month, from.day);
+    final toDay = DateTime(to.year, to.month, to.day);
+
     return appointments
-        .where((a) => a.isUpcoming(now: now))
+        .where((a) =>
+            !a.isCancelled &&
+            !a.slot.date.isBefore(fromDay) &&
+            !a.slot.date.isAfter(toDay))
         .toList()
       ..sort((a, b) => a.start.compareTo(b.start));
   }

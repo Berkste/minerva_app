@@ -212,15 +212,22 @@ class SupabaseBookingRepository implements BookingRepository {
   }
 
   @override
-  Future<List<Appointment>> fetchAllUpcomingAppointments() async {
-    // The admin select-all policy makes this return every customer's rows.
-    // Filtering to confirmed here; "upcoming vs finished" is decided in the
-    // provider against the clock, same as the customer list.
+  Future<List<Appointment>> fetchAppointmentsInRange(
+    DateTime from,
+    DateTime to,
+  ) async {
+    // One date-range query for the whole visible month; the admin calendar
+    // derives both the per-day markers and the selected-day list from this
+    // single result, so paging a month is one round trip, never one per day.
+    // The admin select-all policy is what makes it return every customer's
+    // rows. Cancelled bookings are excluded so a freed day loses its marker.
     final rows = await _guard(
       () => _client
           .from('appointments')
           .select()
           .eq('status', 'confirmed')
+          .gte('slot_date', Slot(from, 0).dateKey)
+          .lte('slot_date', Slot(to, 0).dateKey)
           .order('slot_date')
           .order('slot_hour'),
     );

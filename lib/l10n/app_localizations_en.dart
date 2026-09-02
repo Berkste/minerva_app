@@ -394,6 +394,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adminAppointmentsTitle => 'All Appointments';
 
   @override
+  String get adminScheduleTitle => 'Schedule';
+
+  @override
+  String get adminToday => 'Today';
+
+  @override
   String get adminSignOut => 'Sign Out';
 
   @override
@@ -404,6 +410,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get adminNoAppointmentsMessage => 'New bookings will appear here.';
+
+  @override
+  String get adminNoAppointmentsOnDay => 'No appointments on this day.';
+
+  @override
+  String adminDayAppointmentCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count appointments',
+      one: '1 appointment',
+      zero: 'No appointments',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get adminCouldNotLoad => 'Could not load appointments.';

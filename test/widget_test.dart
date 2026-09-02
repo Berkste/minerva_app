@@ -659,6 +659,37 @@ void main() {
       expect(find.text('Guest'), findsNothing);
     });
 
+    testWidgets('the customer build exposes no admin entry on Profile',
+        (tester) async {
+      // The admin panel now lives in a separate build (lib/main_admin.dart).
+      // The old long-press-the-version-line entry is gone, so long-pressing it
+      // in the customer app must NOT open the staff login.
+      tester.platformDispatcher.localesTestValue = const [Locale('en')];
+      addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+
+      // Tall viewport so the whole Profile list (version line at the bottom)
+      // is built and reachable without scrolling.
+      tester.view.physicalSize = const Size(1260, 4200);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(MinervaApp(repository: FakeBookingRepository()));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Get Started'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Profile'));
+      await tester.pumpAndSettle();
+
+      final version = find.text('Version 1.0.0');
+      expect(version, findsOneWidget);
+      await tester.longPress(version);
+      await tester.pumpAndSettle();
+
+      // No admin login appeared — there is no path from the customer app.
+      expect(find.text('Admin Login'), findsNothing);
+      expect(find.text('Schedule'), findsNothing);
+    });
+
     testWidgets('losing the race tells the customer and clears their slot',
         (tester) async {
       final slot = Slot(DateTime.now().add(const Duration(days: 2)), 16);

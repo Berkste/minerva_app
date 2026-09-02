@@ -818,6 +818,18 @@ abstract class AppLocalizations {
   /// **'Tüm Randevular'**
   String get adminAppointmentsTitle;
 
+  /// No description provided for @adminScheduleTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Randevu Takvimi'**
+  String get adminScheduleTitle;
+
+  /// No description provided for @adminToday.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bugün'**
+  String get adminToday;
+
   /// No description provided for @adminSignOut.
   ///
   /// In tr, this message translates to:
@@ -841,6 +853,18 @@ abstract class AppLocalizations {
   /// In tr, this message translates to:
   /// **'Yeni randevular burada görünecek.'**
   String get adminNoAppointmentsMessage;
+
+  /// No description provided for @adminNoAppointmentsOnDay.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bu gün için randevu yok.'**
+  String get adminNoAppointmentsOnDay;
+
+  /// No description provided for @adminDayAppointmentCount.
+  ///
+  /// In tr, this message translates to:
+  /// **'{count, plural, =0{Randevu yok} =1{1 randevu} other{{count} randevu}}'**
+  String adminDayAppointmentCount(int count);
 
   /// No description provided for @adminCouldNotLoad.
   ///
