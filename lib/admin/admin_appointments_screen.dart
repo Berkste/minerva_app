@@ -78,12 +78,10 @@ class AdminAppointmentsScreen extends StatelessWidget {
             tooltip: l10n.adminSignOut,
             icon: const Icon(Icons.logout_rounded, size: 20),
             color: AppColors.textSecondary,
-            onPressed: () async {
-              final navigator = Navigator.of(context);
-              await context.read<AdminProvider>().signOut();
-              // Leaving admin entirely returns to the customer app beneath.
-              navigator.pop();
-            },
+            // Signing out flips AdminProvider to signedOut; the gate in
+            // AdminApp reactively shows the login screen. Nothing to pop —
+            // AdminApp is the admin build's home.
+            onPressed: () => context.read<AdminProvider>().signOut(),
           ),
         ],
       ),

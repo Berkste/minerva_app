@@ -24,6 +24,38 @@ flutter create --platforms=web .
 flutter run -d chrome
 ```
 
+## Builds
+
+There are two separate builds from this one codebase, chosen by entry point:
+
+**Customer (ships to the App Store and Google Play)** — the default entry,
+`lib/main.dart`. It contains **no admin panel and no reachable admin code**:
+nothing in its import graph references `lib/admin/`, so the store binary cannot
+open the staff screens at all.
+
+```bash
+flutter build appbundle --release \
+  --dart-define=SUPABASE_URL=https://<project-ref>.supabase.co \
+  --dart-define=SUPABASE_ANON_KEY=<publishable-key>
+```
+
+**Admin / employee (internal only — never uploaded to the stores)** — the
+`lib/main_admin.dart` entry, which launches straight into the staff login.
+Distribute it to staff directly (internal track / sideload), not through the
+public listings.
+
+```bash
+flutter build appbundle --release -t lib/main_admin.dart \
+  --dart-define=SUPABASE_URL=https://<project-ref>.supabase.co \
+  --dart-define=SUPABASE_ANON_KEY=<publishable-key>
+```
+
+Both builds share the same `applicationId`, so only one can be installed on a
+device at a time. If staff ever need the customer app and the admin app side by
+side on one phone, that would require a separate `applicationId` (an Android
+product flavor / iOS target) — deliberately not set up now, to keep things
+minimal.
+
 ## The booking flow
 
 Splash → Home → **Calendar → Time → Details → Service (optional) → Review →

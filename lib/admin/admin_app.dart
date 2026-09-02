@@ -8,14 +8,12 @@ import 'admin_login_screen.dart';
 
 /// Entry point for the admin/employee flow.
 ///
-/// Pushed as its own route from a discreet control on the Profile screen, so it
-/// stays out of the customer's normal path. It owns a single [AdminProvider]
-/// for the whole flow and shows login or the schedule depending on auth state.
+/// This is the `home` of the separate admin build (`lib/main_admin.dart`); the
+/// customer app does not reference it at all. It owns a single [AdminProvider]
+/// for the whole flow and shows login or the schedule depending on auth state —
+/// so signing out returns to the login screen reactively, with nothing to pop.
 class AdminApp extends StatelessWidget {
   const AdminApp({super.key});
-
-  static Route<void> route() =>
-      MaterialPageRoute(builder: (_) => const AdminApp());
 
   @override
   Widget build(BuildContext context) {
