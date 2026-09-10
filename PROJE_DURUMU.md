@@ -10,7 +10,7 @@
 
 | | Durum |
 |---|---|
-| `main` branch | `0146efc` — **`origin/main`'in 3 commit önünde, PUSH BEKLİYOR** |
+| `main` branch | **`origin/main`'in 4 commit önünde — PUSH BEKLİYOR** |
 | Açık iş | Yok — admin build ayrımı + gün takvimi `main`'e merge edildi |
 | Doğrulama | `flutter analyze` temiz · **226 test geçiyor** · iki release APK derleniyor |
 | Bekleyen tek şey | `git push origin main` — **senin komutun** |
@@ -20,7 +20,8 @@
 ## 2. Branch haritası
 
 ```
-* 0146efc  (main)  ← PUSH BEKLİYOR
+* (main)   ← PUSH BEKLİYOR — bu doküman
+* 0146efc
 * f9a4f3c
 * e019b05
 *   1ef46cf  (origin/main)
@@ -40,7 +41,7 @@
 
 | Branch | Commit | Ne işe yarıyor | Durum |
 |---|---|---|---|
-| `main` | `0146efc` | Ana hat, her şey burada | 🟡 **3 commit push bekliyor** |
+| `main` | `0146efc` + doküman commit'i | Ana hat, her şey burada | 🟡 **4 commit push bekliyor** |
 | ~~`feature/admin-build-and-calendar`~~ | — | Build ayrımı + gün takvimi | ✅ Merge edildi, branch silindi |
 | `edit_20260827` | `0b6dbb8` | Lokalizasyon işinin eski branch'i | 🗑️ `main` geçmişinde var, istenirse silinir |
 | `supbase_work` | `413d4d5` | Supabase geçişinin eski branch'i | 🗑️ `main` geçmişinde var, istenirse silinir |
