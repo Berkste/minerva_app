@@ -10,21 +10,22 @@
 
 | | Durum |
 |---|---|
-| `main` branch | **`origin/main`'in önünde — PUSH BEKLİYOR** |
+| `main` branch | `origin/main` ile eşit — push edildi |
 | Açık iş | Yok — admin build ayrımı + gün takvimi `main`'e merge edildi |
 | Doğrulama | `flutter analyze` temiz · **226 test geçiyor** · iki release APK derleniyor |
-| Bekleyen tek şey | `git push origin main` — **senin komutun** |
+| Sıradaki iş | Supabase projesini canlıya hazırlamak — bkz. §10 |
 
 ---
 
 ## 2. Branch haritası
 
 ```
-* (main)   ← PUSH BEKLİYOR — bu doküman
+* 0644b72  (main, origin/main)   flavor: com.oberk.minerva
+* …        doküman commit'leri
 * 0146efc
 * f9a4f3c
 * e019b05
-*   1ef46cf  (origin/main)
+*   1ef46cf
 |\
 | * a742027  feature/admin-appointments
 * |   ccbd1fb
@@ -41,7 +42,7 @@
 
 | Branch | Commit | Ne işe yarıyor | Durum |
 |---|---|---|---|
-| `main` | `0146efc` + doküman commit'leri | Ana hat, her şey burada | 🟡 **Push bekliyor** |
+| `main` | `0644b72` | Ana hat, her şey burada | ✅ `origin/main` ile eşit |
 | ~~`feature/admin-build-and-calendar`~~ | — | Build ayrımı + gün takvimi | ✅ Merge edildi, branch silindi |
 | `edit_20260827` | `0b6dbb8` | Lokalizasyon işinin eski branch'i | 🗑️ `main` geçmişinde var, istenirse silinir |
 | `supbase_work` | `413d4d5` | Supabase geçişinin eski branch'i | 🗑️ `main` geçmişinde var, istenirse silinir |
@@ -376,3 +377,32 @@ daha önce doğrulanmıştı). Release build'ler: müşteri **52.1 MB**, admin *
 | Statik analiz | `flutter analyze` |
 | Dil dosyaları | `flutter gen-l10n` (build sırasında otomatik) |
 | Yarış denemesi (canlı DB) | `dart run tool/concurrency_probe.dart` |
+
+---
+
+## 10. Supabase'i canlıya alma (dycjvupgvuxkguorzaqz)
+
+Karar: mevcut geliştirme projesi canlı veritabanı olarak kullanılacak. Aşağıdaki
+sıra, o projeyi savunulabilir bir canlı ortama çeviren adımlar. SQL'ler
+`supabase/checks/` altında.
+
+| # | Adım | Nasıl |
+|---|---|---|
+| 1 | Şema denetimi | `01_schema_audit.sql`'i SQL editöründe çalıştır. FAIL satırı kalmamalı |
+| 2 | Veri denetimi | `02_data_audit.sql` — bölüm bölüm çalıştır, özellikle 1. sorgu (çifte rezervasyon) boş dönmeli |
+| 3 | Temiz yeniden uygulama | `03_production_reset.sql` Bölüm A → sonra iki migration'ı sırayla yeniden çalıştır |
+| 4 | Test kullanıcılarını sil | `03` Bölüm 3 — anonim kullanıcılar (cascade ile randevu/profil de gider) |
+| 5 | Personel listesini kur | `03` Bölüm 4 — geliştirme hesaplarını çıkar, gerçek personeli ekle |
+| 6 | Panel ayarları | `03` Bölüm 5'teki liste — anonim giriş, yedekleme planı, ücretsiz planın 7 günlük duraklatması |
+| 7 | Tekrar denetle | `01`'i yeniden çalıştır — hepsi OK olmalı |
+
+**3. adım neden önemli:** bu projedeki şema, migration'ların temiz bir geçişiyle
+değil, kısmi uygulanan bir migration'ın yamalanmasıyla oluştu. Veri hâlâ
+atılabilir durumdayken sıfırdan uygulamak, canlı şemanın git'teki şemayla
+birebir aynı olduğunu **kanıtlar**. Gerçek müşteri verisi geldikten sonra bu
+seçenek kapanır.
+
+**Bunlar SQL'den görünmez, panelden bakılacak:** anonim giriş açık mı, yedekleme
+/ PITR var mı (ücretsiz planda yok), proje 7 gün hareketsizlikte duraklar mı,
+API'de yalnızca `public` şeması açık mı, `service_role` anahtarı hiçbir yerde
+uygulamaya girmiş mi.
