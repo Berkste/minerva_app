@@ -1,4 +1,4 @@
-# Minerva Nail Art — Proje Durumu
+﻿# Minerva Nail Art — Proje Durumu
 
 **Son güncelleme:** 2026-09-10
 **Depo:** `C:\Projects\minerva_app`
@@ -10,7 +10,7 @@
 
 | | Durum |
 |---|---|
-| `main` branch | **`origin/main`'in 4 commit önünde — PUSH BEKLİYOR** |
+| `main` branch | **`origin/main`'in önünde — PUSH BEKLİYOR** |
 | Açık iş | Yok — admin build ayrımı + gün takvimi `main`'e merge edildi |
 | Doğrulama | `flutter analyze` temiz · **226 test geçiyor** · iki release APK derleniyor |
 | Bekleyen tek şey | `git push origin main` — **senin komutun** |
@@ -41,7 +41,7 @@
 
 | Branch | Commit | Ne işe yarıyor | Durum |
 |---|---|---|---|
-| `main` | `0146efc` + doküman commit'i | Ana hat, her şey burada | 🟡 **4 commit push bekliyor** |
+| `main` | `0146efc` + doküman commit'leri | Ana hat, her şey burada | 🟡 **Push bekliyor** |
 | ~~`feature/admin-build-and-calendar`~~ | — | Build ayrımı + gün takvimi | ✅ Merge edildi, branch silindi |
 | `edit_20260827` | `0b6dbb8` | Lokalizasyon işinin eski branch'i | 🗑️ `main` geçmişinde var, istenirse silinir |
 | `supbase_work` | `413d4d5` | Supabase geçişinin eski branch'i | 🗑️ `main` geçmişinde var, istenirse silinir |
@@ -150,7 +150,7 @@ Projenin etrafında döndüğü garanti burada kuruldu:
 - `main` üzerinde doğrulama: `flutter analyze` temiz, **226 test geçti**, iki release APK derlendi
 - Feature branch ve worktree kaldırıldı
 
-🛑 **Burada duruyoruz** — `main`, `origin/main`'in 3 commit önünde. **Push senin komutun.**
+🛑 **Burada duruyoruz** — `main`, `origin/main`'in önünde. **Push senin komutun.**
 
 ---
 
