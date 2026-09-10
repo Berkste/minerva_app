@@ -9,10 +9,14 @@ Bookings live in Supabase, so the app needs credentials at build time:
 
 ```bash
 flutter pub get
-flutter run \
+flutter run --flavor customer \
   --dart-define=SUPABASE_URL=https://<project-ref>.supabase.co \
   --dart-define=SUPABASE_ANON_KEY=<publishable-key>
 ```
+
+`--flavor` is not optional: the Android module defines two of them (see
+**Builds**), so without one there is no single variant to assemble. Add
+`--flavor admin -t lib/main_admin.dart` to run the staff app instead.
 
 Built without them, the app shows a "Setup required" screen instead of failing
 at the first query. See **Backend** below for the one-time project setup.
@@ -26,35 +30,45 @@ flutter run -d chrome
 
 ## Builds
 
-There are two separate builds from this one codebase, chosen by entry point:
+Two separate apps come out of this one codebase. They differ in the Dart entry
+point that is compiled in and in the Android product flavor that names them:
 
-**Customer (ships to the App Store and Google Play)** — the default entry,
-`lib/main.dart`. It contains **no admin panel and no reachable admin code**:
-nothing in its import graph references `lib/admin/`, so the store binary cannot
-open the staff screens at all.
+| | Customer | Admin / employee |
+| --- | --- | --- |
+| Entry point | `lib/main.dart` | `lib/main_admin.dart` |
+| Flavor | `customer` | `admin` |
+| Application id | `com.oberk.minerva` | `com.oberk.minerva.admin` |
+| Launcher name | Minerva | Minerva Personel |
+| Distribution | App Store / Google Play | Internal only — never the public listings |
+
+**Customer** contains **no admin panel and no reachable admin code**: nothing in
+its import graph references `lib/admin/`, so the store binary cannot open the
+staff screens at all.
 
 ```bash
-flutter build appbundle --release \
+flutter build appbundle --release --flavor customer \
   --dart-define=SUPABASE_URL=https://<project-ref>.supabase.co \
   --dart-define=SUPABASE_ANON_KEY=<publishable-key>
 ```
 
-**Admin / employee (internal only — never uploaded to the stores)** — the
-`lib/main_admin.dart` entry, which launches straight into the staff login.
-Distribute it to staff directly (internal track / sideload), not through the
-public listings.
+**Admin / employee** launches straight into the staff login. Distribute it to
+staff directly (its own internal track, or a sideloaded APK).
 
 ```bash
-flutter build appbundle --release -t lib/main_admin.dart \
+flutter build appbundle --release --flavor admin -t lib/main_admin.dart \
   --dart-define=SUPABASE_URL=https://<project-ref>.supabase.co \
   --dart-define=SUPABASE_ANON_KEY=<publishable-key>
 ```
 
-Both builds share the same `applicationId`, so only one can be installed on a
-device at a time. If staff ever need the customer app and the admin app side by
-side on one phone, that would require a separate `applicationId` (an Android
-product flavor / iOS target) — deliberately not set up now, to keep things
-minimal.
+The two application ids are the point of the split. They let both apps sit on
+one phone, and they keep the staff build out of the customer's Play listing —
+an internal testing track belongs to one listing, so a same-id admin build
+would reach testers as an *update to the customer app*. An application id is
+fixed at the first store upload and cannot be changed afterwards.
+
+iOS still has a single target (`com.oberk.minerva`); the equivalent split there
+is a second target with its own bundle id, left until there is a Mac to build
+and test it on.
 
 ## The booking flow
 

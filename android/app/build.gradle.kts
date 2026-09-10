@@ -19,7 +19,7 @@ if (hasReleaseKeystore) {
 }
 
 android {
-    namespace = "com.minerva.minerva_app"
+    namespace = "com.oberk.minerva"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -29,8 +29,10 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.minerva.minerva_app"
+        // The customer app's identity on Google Play. Fixed at the first upload
+        // and unchangeable afterwards, so it is deliberate rather than the
+        // Flutter template default. The admin flavor derives from it below.
+        applicationId = "com.oberk.minerva"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -41,6 +43,35 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+    }
+
+    // Two audiences, two installable apps. They share this module and differ
+    // only in application id, launcher name, and — through `--target` — which
+    // Dart entry point is compiled in:
+    //
+    //   customer → com.oberk.minerva        lib/main.dart        (the stores)
+    //   admin    → com.oberk.minerva.admin  lib/main_admin.dart  (staff only)
+    //
+    // Separate ids are what let both sit on one phone, and what keeps the
+    // internal staff build out of the customer's Play listing: an internal
+    // testing track belongs to ONE listing, so a same-id admin build would
+    // reach testers as an update to the customer app.
+    //
+    // Because flavors exist, every build and run command must name one —
+    // `flutter build apk --flavor admin -t lib/main_admin.dart`. Without
+    // `--flavor` Gradle has no single variant to assemble and the build fails.
+    flavorDimensions += "audience"
+
+    productFlavors {
+        create("customer") {
+            dimension = "audience"
+            manifestPlaceholders["appName"] = "Minerva"
+        }
+        create("admin") {
+            dimension = "audience"
+            applicationIdSuffix = ".admin"
+            manifestPlaceholders["appName"] = "Minerva Personel"
+        }
     }
 
     signingConfigs {

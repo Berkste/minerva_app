@@ -152,6 +152,14 @@ Projenin etrafında döndüğü garanti burada kuruldu:
 
 🛑 **Burada duruyoruz** — `main`, `origin/main`'in önünde. **Push senin komutun.**
 
+**Android product flavor kuruldu** (push sonrası, aynı gün)
+- Kalıcı paket kimliği seçildi: **`com.oberk.minerva`** (şablondan gelen `com.minerva.minerva_app` TODO'su kapandı)
+- İki flavor: `customer` → `com.oberk.minerva` / "Minerva" · `admin` → `com.oberk.minerva.admin` / "Minerva Personel"
+- Kotlin paketi `com.oberk.minerva`'ya taşındı, `namespace` güncellendi, manifest etiketi `${appName}` yer tutucusuna bağlandı
+- iOS bundle id'leri de aynı kimliğe hizalandı (`com.oberk.minerva`) — iOS build'i denenemedi, macOS yok
+- Doğrulandı: iki flavor da derleniyor (52.1 MB / 51.5 MB), birleştirilmiş manifest'lerde paket adları ve etiketler ayrı, analyze temiz, 226 test geçiyor
+- ⚠️ **Artık her `flutter run` / `flutter build` komutu `--flavor` istiyor** — flavor tanımlıyken Gradle'ın derleyeceği tek bir varyant kalmıyor
+
 ---
 
 ## 4. Şu anki mimari (feature branch dahil)
@@ -239,7 +247,7 @@ zaman bombası fixture'ı. Slot artık `DateTime.now().add(Duration(days: 7))` i
 | Konu | Durum |
 |---|---|
 | Admin yetkisi | Sadece **görüntüleme + iptal**. Randevu oluşturma/erteleme yok (RLS'te de admin INSERT politikası yok) |
-| Tek `applicationId` | İki build aynı paket adını paylaşıyor → cihaz başına tek kurulum. Yan yana kurulum Android flavor / iOS target ister |
+| ~~Tek `applicationId`~~ | ✅ Çözüldü (2026-09-10): Android flavor kuruldu — `com.oberk.minerva` / `com.oberk.minerva.admin`, ikisi bir telefonda durabiliyor. iOS hâlâ tek target |
 | Kimlik cihaza bağlı | Anonim giriş kurulum başına; ikinci cihazda veya yeniden kurulumda müşteri randevularını göremez. Çözüm yolu belli: telefon doğrulaması ile anonim kullanıcıyı bağlamak — şema değişmiyor |
 | README test sayısı | README "210 tests" diyor, gerçek sayı 226 — küçük tutarsızlık |
 
@@ -360,8 +368,10 @@ daha önce doğrulanmıştı). Release build'ler: müşteri **52.1 MB**, admin *
 
 | Amaç | Komut |
 |---|---|
-| Müşteri sürümü (mağaza) | `flutter build appbundle --release --dart-define=...` |
-| Admin sürümü (personel) | `flutter build appbundle --release -t lib/main_admin.dart --dart-define=...` |
+| Müşteri sürümü (mağaza) | `flutter build appbundle --release --flavor customer --dart-define=...` |
+| Admin sürümü (personel) | `flutter build appbundle --release --flavor admin -t lib/main_admin.dart --dart-define=...` |
+| Müşteri sürümünü çalıştır | `flutter run --flavor customer --dart-define=...` |
+| Admin sürümünü çalıştır | `flutter run --flavor admin -t lib/main_admin.dart --dart-define=...` |
 | Testler | `flutter test` |
 | Statik analiz | `flutter analyze` |
 | Dil dosyaları | `flutter gen-l10n` (build sırasında otomatik) |

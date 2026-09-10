@@ -1,4 +1,4 @@
-package com.minerva.minerva_app
+﻿package com.oberk.minerva
 
 import io.flutter.embedding.android.FlutterActivity
 
