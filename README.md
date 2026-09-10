@@ -275,7 +275,7 @@ re-checks immediately before saving in case the state changed mid-flow.
 flutter test
 ```
 
-210 tests. `test/fake_booking_repository.dart` is an in-memory stand-in for
+226 tests. `test/fake_booking_repository.dart` is an in-memory stand-in for
 Supabase that reproduces the unique index, so the double-booking race is
 testable without a live database — including the nasty interleaving where a
 slot is taken *between* the availability check and the insert.

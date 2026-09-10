@@ -19,7 +19,10 @@ import 'fake_booking_repository.dart';
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  final slot = Slot(DateTime(2026, 9, 4), 14);
+  // Relative to the clock, never a fixed date: some of the tests below assert
+  // the booking lands in `upcoming`, which filters on DateTime.now(), so a
+  // hard-coded day silently starts failing once that day passes.
+  final slot = Slot(DateTime.now().add(const Duration(days: 7)), 14);
 
   Future<AppointmentProvider> providerFor(FakeBookingRepository repo) async {
     final provider = AppointmentProvider(repo);
