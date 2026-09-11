@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/appointment.dart';
@@ -279,8 +280,34 @@ class SupabaseBookingRepository implements BookingRepository {
   Future<T> _guard<T>(Future<T> Function() action) async {
     try {
       return await action();
-    } on PostgrestException catch (error) {
-      throw switch (error.code) {
+    } catch (error) {
+      final translated = translateError(error);
+      if (translated == null) rethrow;
+      throw translated;
+    }
+  }
+
+  /// Maps a backend failure to the outcome the UI knows how to explain.
+  ///
+  /// Kept as a pure function, separate from [_guard], so it can be tested
+  /// without a Supabase client. It is worth testing on its own: it decides
+  /// which sentence the customer reads, and it matches on codes that are
+  /// defined in the migrations rather than here — so if the two ever drift
+  /// apart, this is the only place in the app that would notice.
+  ///
+  /// Returns null for anything that is not a failure this app can explain;
+  /// [_guard] lets those propagate untouched rather than guessing at them.
+  @visibleForTesting
+  static BookingException? translateError(Object error) => switch (error) {
+    PostgrestException() => _translatePostgrest(error),
+    AuthException() => _translateAuth(error),
+    SocketException() => const BookingOfflineException(),
+    TimeoutException() => const BookingOfflineException(),
+    _ => null,
+  };
+
+  static BookingException _translatePostgrest(PostgrestException error) =>
+      switch (error.code) {
         _uniqueViolation => const SlotTakenException(),
         _slotInThePast => const SlotInThePastException(),
         _checkViolation => BookingFailedException(
@@ -289,17 +316,15 @@ class SupabaseBookingRepository implements BookingRepository {
         ),
         _ => BookingFailedException('${error.code}: ${error.message}'),
       };
-    } on AuthException catch (error) {
-      // Off by default in a new project, so worth naming precisely.
-      if (error.code == 'anonymous_provider_disabled' ||
-          error.message.toLowerCase().contains('anonymous sign-ins are disabled')) {
-        throw const AnonymousSignInDisabledException();
-      }
-      throw BookingFailedException('auth: ${error.message}');
-    } on SocketException {
-      throw const BookingOfflineException();
-    } on TimeoutException {
-      throw const BookingOfflineException();
+
+  static BookingException _translateAuth(AuthException error) {
+    // Off by default in a new project, so worth naming precisely.
+    if (error.code == 'anonymous_provider_disabled' ||
+        error.message.toLowerCase().contains(
+          'anonymous sign-ins are disabled',
+        )) {
+      return const AnonymousSignInDisabledException();
     }
+    return BookingFailedException('auth: ${error.message}');
   }
 }

@@ -414,31 +414,35 @@ uygulamaya girmiş mi.
 **Tam olarak burada durduk.** Devam ederken önce bu bölümü oku.
 
 ### Tamamlananlar
-- Admin build ayrımı + gün takvimi → `main`'e merge edildi, push edildi
-- Test fixture zaman bombası düzeltildi (`0146efc`), 226/226 test geçiyor
-- Android product flavor kuruldu (`0644b72`): `com.oberk.minerva` / `com.oberk.minerva.admin`
-- Supabase denetim SQL'leri yazıldı (`133067c`) ve **çalıştırıldı**
-- Denetim yorumlandı → **A yolu (temiz yeniden uygulama)** seçildi
-- İki uyumluluk bulgusu da giderildi: trigger'a özel `MN001` SQLSTATE'i verildi,
+- Admin build ayrımı + gün takvimi → `main`'e merge edildi
+- Android product flavor (`0644b72`): `com.oberk.minerva` / `com.oberk.minerva.admin`
+- **Supabase canlıya alındı** — A yolu (temiz yeniden uygulama) uygulandı,
+  `01_schema_audit.sql` sıfır FAIL / sıfır WARN döndü, veri tabanı boş ve tek
+  personel hesabı yetkili
+- İki uyumluluk bulgusu giderildi: trigger'a özel `MN001` SQLSTATE'i verildi,
   kullanılmayan `profiles_select_admin` policy'si kaldırıldı
+- Hata eşlemesi test edilebilir saf fonksiyona çıkarıldı + `test/error_mapping_test.dart`
+- Eski `edit_20260827` ve `supbase_work` branch'leri silindi (ikisi de `main`'de)
+- **236/236 test geçiyor**, `flutter analyze` temiz
 
 ### 🟡 Sırada bekleyen — SEN yapacaksın
-**→ `supabase/CANLIYA_CIKIS.md`** — adım adım uygulama listesi orada.
+**→ `supabase/CANLIYA_CIKIS.md`**
 
-Özet: Section A drop → iki migration'ı sırayla uygula → 45 anonim kullanıcıyı sil
-→ admin satırını geri ekle → `01`'i tekrar çalıştır (sıfır FAIL beklenir) →
-**APK'ları yeniden derle** (eski build `MN001`'i tanımaz) → duman testi →
-panel ayarları kontrol listesi.
+Özet: APK'ları yeniden derle (**eski build `MN001`'i tanımaz**) → duman testi
+(özellikle geçmiş-saat senaryosu) → Android sideload + iOS TestFlight dağıtımı →
+panel ayarları kontrol listesi → canlı kullanıcı testi.
 
-### ❓ Cevap bekleyen kararlar
-| Konu | Seçenekler | Etkisi |
-|---|---|---|
-| `admin@minerva.com.tr` | Gerçek personel hesabı **veya** geliştirme hesabı (sil, yenisini aç) | Canlıda her müşterinin adına/telefonuna erişen kimlik |
-| Personel dağıtımı | Play Internal Testing / TestFlight **veya** sideload APK | Sadece yönerge; flavor sayesinde ikisi de mümkün |
-| Eski branch'ler | `edit_20260827`, `supbase_work` silinsin mi | Commit'leri `main` geçmişinde, kayıp yok |
+> ⚠️ `03_production_reset.sql` artık **çalıştırılmamalı**. Section 3'ün anonim
+> kullanıcı silme sorgusu bundan sonra gerçek müşterileri siler.
 
-### Bilinen boşluklar
-- `SupabaseBookingRepository` hata eşlemesinin birim testi yok (testler fake
-  repository üzerinden gidiyor) — `MN001` eşlemesi yalnızca duman testiyle doğrulanıyor
-- Android upload keystore oluşturulmadı
-- iOS release hiç derlenmedi (macOS yok)
+### Karara bağlananlar
+| Konu | Karar |
+|---|---|
+| Personel hesabı | `admin@minerva.com.tr` — gerçek ve tek admin hesabı |
+| Personel dağıtımı | Android sideload APK + iOS TestFlight, testi Berk yapacak |
+| Canlı test | Dağıtımdan sonra gerçek kullanıcılarla |
+
+### Sonraya bırakılanlar (bilinçli)
+- **Android upload keystore** — AAB/APK yükleme anında oluşturulacak
+- **iOS release derlemesi** — Mac mini üzerinde, Claude Code bu projede
+  çalıştırılarak test ve release kontrolü yapılacak
