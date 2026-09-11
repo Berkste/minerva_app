@@ -27,8 +27,8 @@ comment on table public.admins is
 -- ---------------------------------------------------------------------------
 -- is_admin(): is the current caller staff?
 -- ---------------------------------------------------------------------------
--- security definer on purpose. The appointments and profiles policies below
--- call this to decide "can this caller see everything". If the function were a
+-- security definer on purpose. The appointments policies below call this to
+-- decide "can this caller see everything". If the function were a
 -- plain query against public.admins, and admins itself had a policy that also
 -- called is_admin(), Postgres would recurse. Running as owner (bypassing RLS on
 -- admins) and keeping the admins policy free of is_admin() breaks that cycle.
@@ -85,10 +85,18 @@ create policy appointments_select_admin on public.appointments
 create policy appointments_update_admin on public.appointments
   for update using (public.is_admin()) with check (public.is_admin());
 
--- Staff can read customer contact details, so the schedule can show who is
--- coming and how to reach them.
-create policy profiles_select_admin on public.profiles
-  for select using (public.is_admin());
+-- Deliberately NO staff policy on `profiles`. It looks like staff would need one
+-- to see who is coming, but they do not: every booking carries its own
+-- first_name / last_name / phone, snapshotted onto the appointment row when the
+-- customer confirmed it, and the admin screens read only that. The two calls
+-- that touch `profiles` (`fetchProfile` and `saveProfile`) are both scoped to
+-- `auth.uid()` and are served by profiles_select_own.
+--
+-- So a staff-wide read on `profiles` would hand every staff member the current
+-- phone number of every customer who ever registered — including those with no
+-- booking at all — and buy nothing. Left out on least-privilege grounds. If a
+-- screen ever genuinely needs the live profile rather than the snapshot, add it
+-- back knowingly, together with that screen.
 
 -- No admin INSERT policy on appointments and no DELETE anywhere: staff manage
 -- existing bookings, they do not create them for customers or erase history in

@@ -8,7 +8,7 @@
 -- one, and re-running — not by a clean pass. Both are fixable while the data is
 -- still disposable, which is exactly now.
 --
--- Two ways forward. A is stronger and costs about the same today.
+-- DECIDED 2026-09-11: path A, on the evidence of the first audit run.
 --
 --   A. Clean re-apply — drop the app's objects and run the two migration files
 --      from scratch, so the live schema is provably the schema in git.
@@ -16,8 +16,22 @@
 --      rows and test users. Choose this only if 01_schema_audit.sql came back
 --      with no FAILs.
 --
--- Whichever you pick, section 3 (auth users) and section 4 (staff roster) apply
--- to both.
+-- B was ruled out because 01 came back with three FAILs, all of them parts of
+-- `20260828120000_admin.sql` that are in git but not in this database:
+-- `admins.created_at` missing, the `admins` foreign key not cascading, and
+-- `anon` still holding execute on `is_admin()`. The policies and the function
+-- body did match — which is the signature of an older draft of that file having
+-- been applied by hand and never re-run, since `create or replace` updates a
+-- function but `create table` and `revoke` do not. Meanwhile 02 found nothing
+-- worth keeping: six test bookings, one profile, forty-five anonymous devices,
+-- no duplicate confirmed slot and no invariant broken.
+--
+-- ⚠️ Path A does NOT mean deleting and recreating the Supabase project. The
+-- project, its URL, its anon key, its dashboard settings and `auth.users` all
+-- stay exactly as they are — including the staff login. Only the objects inside
+-- the `public` schema are dropped and rebuilt from the migration files.
+--
+-- Section 3 (auth users) and section 4 (staff roster) apply to either path.
 
 
 -- ===========================================================================
@@ -124,7 +138,29 @@ from public.admins ad
 left join auth.users u on u.id = ad.id
 order by ad.created_at;
 
--- Remove a development account:
+-- After path A the table is empty, so the question is not who to remove but who
+-- to put back. The staff login itself survived — it lives in `auth.users`, which
+-- path A does not touch, and section 3 does not delete it because it is not an
+-- anonymous user. Only its `admins` row went with the dropped table.
+--
+-- The account the audit found on 2026-09-11:
+--
+--   8ee7ffc9-b007-46ac-b6a8-7dd2d69fec44   admin@minerva.com.tr
+--
+-- If that stays the real staff account, put it back:
+
+/*
+insert into public.admins (id)
+values ('8ee7ffc9-b007-46ac-b6a8-7dd2d69fec44')
+on conflict (id) do nothing;
+*/
+
+-- If it was only ever a development login, delete the user itself in the
+-- dashboard (Authentication → Users) instead, and create the real one below.
+-- Leaving it in place means a working set of credentials to every customer's
+-- name and phone number, so it is a decision to make rather than to defer.
+
+-- Remove a development account that is already in the roster:
 
 /*
 delete from public.admins where id = '<uuid>';

@@ -106,6 +106,17 @@ create index appointments_user_slot_idx
 -- ---------------------------------------------------------------------------
 -- The client already hides past slots, but a device with a wrong clock (or a
 -- direct API call) must not be able to book yesterday.
+--
+-- The error code is deliberately NOT 'check_violation' (23514). The table's own
+-- CHECK constraints — phone, name length, slot_hour, service_id — raise 23514
+-- too, so a client that mapped 23514 to "that slot has already started" would
+-- tell the customer the wrong thing whenever one of those failed. 'MN001' is a
+-- user-defined SQLSTATE owned by this trigger alone, so the mapping in
+-- `supabase_booking_repository.dart` is exact.
+--
+-- PostgREST passes the SQLSTATE through as the `code` field of the error body,
+-- and maps anything it does not recognise to HTTP 400 — the same status 23514
+-- produced before, so nothing else about the response changes.
 
 create or replace function public.reject_past_appointments()
 returns trigger
@@ -117,7 +128,7 @@ begin
   if new.status = 'confirmed'
      and (new.slot_date + make_interval(hours => new.slot_hour)) <= salon_now then
     raise exception 'Cannot book a slot in the past'
-      using errcode = 'check_violation';
+      using errcode = 'MN001';
   end if;
   return new;
 end;

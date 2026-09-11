@@ -409,33 +409,36 @@ uygulamaya girmiş mi.
 
 ---
 
-## 11. 🔖 Son kalınan nokta — 2026-09-10
+## 11. 🔖 Son kalınan nokta — 2026-09-11
 
 **Tam olarak burada durduk.** Devam ederken önce bu bölümü oku.
 
 ### Tamamlananlar
 - Admin build ayrımı + gün takvimi → `main`'e merge edildi, push edildi
 - Test fixture zaman bombası düzeltildi (`0146efc`), 226/226 test geçiyor
-- Android product flavor kuruldu (`0644b72`): `com.oberk.minerva` / `com.oberk.minerva.admin`, iki flavor da derleniyor
-- Supabase denetim SQL'leri yazıldı (`133067c`): `supabase/checks/01`, `02`, `03`
+- Android product flavor kuruldu (`0644b72`): `com.oberk.minerva` / `com.oberk.minerva.admin`
+- Supabase denetim SQL'leri yazıldı (`133067c`) ve **çalıştırıldı**
+- Denetim yorumlandı → **A yolu (temiz yeniden uygulama)** seçildi
+- İki uyumluluk bulgusu da giderildi: trigger'a özel `MN001` SQLSTATE'i verildi,
+  kullanılmayan `profiles_select_admin` policy'si kaldırıldı
 
 ### 🟡 Sırada bekleyen — SEN yapacaksın
-1. **`git push origin main`** — `133067c` henüz push edilmedi
-2. **`supabase/checks/01_schema_audit.sql`**'i Supabase SQL editöründe çalıştır → çıktıyı paylaş
-3. **`supabase/checks/02_data_audit.sql`**'i bölüm bölüm çalıştır → özellikle 1. sorgu (çifte rezervasyon kontrolü) boş dönmeli
-4. Sonuçlara göre `03_production_reset.sql`'de **A yolu** (temiz yeniden uygulama) mı **B yolu** (sadece veri temizliği) mı karar verilecek
+**→ `supabase/CANLIYA_CIKIS.md`** — adım adım uygulama listesi orada.
+
+Özet: Section A drop → iki migration'ı sırayla uygula → 45 anonim kullanıcıyı sil
+→ admin satırını geri ekle → `01`'i tekrar çalıştır (sıfır FAIL beklenir) →
+**APK'ları yeniden derle** (eski build `MN001`'i tanımaz) → duman testi →
+panel ayarları kontrol listesi.
 
 ### ❓ Cevap bekleyen kararlar
 | Konu | Seçenekler | Etkisi |
 |---|---|---|
+| `admin@minerva.com.tr` | Gerçek personel hesabı **veya** geliştirme hesabı (sil, yenisini aç) | Canlıda her müşterinin adına/telefonuna erişen kimlik |
 | Personel dağıtımı | Play Internal Testing / TestFlight **veya** sideload APK | Sadece yönerge; flavor sayesinde ikisi de mümkün |
-| `23514` hata kodu çakışması | Trigger'a özel SQLSTATE ver **veya** olduğu gibi bırak | Migration + `supabase_booking_repository.dart` değişir |
-| `profiles_select_admin` politikası | Kaldır (en az yetki) **veya** bırak | Admin ekranı bu tabloyu zaten okumuyor |
 | Eski branch'ler | `edit_20260827`, `supbase_work` silinsin mi | Commit'leri `main` geçmişinde, kayıp yok |
 
-### Bulgular (detay §10 öncesi mesajda)
-- **`23514` çakışması:** `supabase_booking_repository.dart:275` her check-constraint ihlalini "slot geçmişte" olarak çeviriyor; ama telefon/isim/saat/servis check'leri de aynı kodu üretiyor. İstemci doğrulaması pratikte engelliyor, eşleme yine de yanlış.
-- **`profiles_select_admin` kullanılmıyor:** admin ekranı iletişim bilgisini randevu satırından okuyor, `profiles` tablosuna hiç gitmiyor.
-
-### Ortam notu
-Bash aracının bu projede PATH'i yok (`git`, `cat` bulunamıyor) — her şey PowerShell ile yapılıyor.
+### Bilinen boşluklar
+- `SupabaseBookingRepository` hata eşlemesinin birim testi yok (testler fake
+  repository üzerinden gidiyor) — `MN001` eşlemesi yalnızca duman testiyle doğrulanıyor
+- Android upload keystore oluşturulmadı
+- iOS release hiç derlenmedi (macOS yok)

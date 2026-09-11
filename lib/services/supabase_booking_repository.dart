@@ -22,7 +22,17 @@ class SupabaseBookingRepository implements BookingRepository {
   /// second person tries to take a slot that is already booked.
   static const String _uniqueViolation = '23505';
 
-  /// Check violation, raised by the "no bookings in the past" trigger.
+  /// Raised by the `appointments_reject_past` trigger, and by nothing else.
+  ///
+  /// A user-defined SQLSTATE rather than the generic check violation below: the
+  /// table's own CHECK constraints (phone, name length, slot_hour, service_id)
+  /// raise 23514 too, so matching on that would report any of them to the
+  /// customer as "that slot has already started".
+  static const String _slotInThePast = 'MN001';
+
+  /// Check violation. One of the column CHECK constraints rejected the row —
+  /// which means the client let through something it should have caught, so it
+  /// is a bug to surface rather than an outcome to explain.
   static const String _checkViolation = '23514';
 
   @override
@@ -272,7 +282,11 @@ class SupabaseBookingRepository implements BookingRepository {
     } on PostgrestException catch (error) {
       throw switch (error.code) {
         _uniqueViolation => const SlotTakenException(),
-        _checkViolation => const SlotInThePastException(),
+        _slotInThePast => const SlotInThePastException(),
+        _checkViolation => BookingFailedException(
+          'A value the app should have validated was rejected by the '
+          'database: ${error.message}',
+        ),
         _ => BookingFailedException('${error.code}: ${error.message}'),
       };
     } on AuthException catch (error) {

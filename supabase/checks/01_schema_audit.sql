@@ -52,7 +52,6 @@ expected_policies(tbl, pol, cmd) as (values
   ('profiles',     'profiles_select_own',        'SELECT'),
   ('profiles',     'profiles_insert_own',        'INSERT'),
   ('profiles',     'profiles_update_own',        'UPDATE'),
-  ('profiles',     'profiles_select_admin',      'SELECT'),
 
   ('appointments', 'appointments_select_own',    'SELECT'),
   ('appointments', 'appointments_insert_own',    'INSERT'),
@@ -251,6 +250,28 @@ c_functions as (
   left join pg_proc p on p.oid = to_regprocedure(want.sig)
 ),
 
+c_past_slot_errcode as (
+  select 'FAIL', '6. functions',
+         'reject_past_appointments() raises its own SQLSTATE',
+         case
+           when p.oid is null then 'FAIL'
+           when pg_get_functiondef(p.oid) like '%MN001%' then 'OK'
+           when pg_get_functiondef(p.oid) like '%check_violation%' then 'FAIL'
+           else 'FAIL'
+         end,
+         case
+           when p.oid is null then 'MISSING'
+           when pg_get_functiondef(p.oid) like '%MN001%'
+             then 'raises MN001  (expected MN001)'
+           when pg_get_functiondef(p.oid) like '%check_violation%'
+             then 'raises check_violation (23514) — collides with the column '
+                  'CHECK constraints, so the app reports the wrong reason'
+           else 'raises something else — inspect the function body'
+         end
+  from pg_proc p
+  where p.oid = to_regprocedure('public.reject_past_appointments()')
+),
+
 -- ---------------------------------------------------------------------------
 -- 7. Function grants — anon must not be able to call the definer functions
 -- ---------------------------------------------------------------------------
@@ -380,6 +401,7 @@ all_checks as (
   union all select * from c_constraint_inventory
   union all select * from c_triggers
   union all select * from c_functions
+  union all select * from c_past_slot_errcode
   union all select * from c_grants
   union all select * from c_rls_enabled
   union all select * from c_rls_all_public_tables
