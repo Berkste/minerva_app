@@ -46,3 +46,15 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Flutter regenerates these for every platform folder on `flutter pub get`,
+# and writes them with LF while core.autocrlf expects CRLF — so they showed up
+# as modified on every pub get without a single character having changed. They
+# are generated from the plugin list, so a fresh clone gets them back on the
+# next `flutter pub get`; nothing is lost by not tracking them.
+windows/flutter/generated_plugin_registrant.cc
+windows/flutter/generated_plugin_registrant.h
+windows/flutter/generated_plugins.cmake
+
+# Documentation screenshot, kept locally rather than in the repository.
+minerva_app_doc.png
