@@ -290,7 +290,9 @@ c_grants as (
          end
   from (values
     ('authenticated', 'public.booked_slots(date,date)', true),
-    ('anon',          'public.booked_slots(date,date)', false),
+    -- Granted since 20260911120000: the grid must load before sign-in, and
+    -- the function returns slot keys only.
+    ('anon',          'public.booked_slots(date,date)', true),
     ('authenticated', 'public.is_admin()',              true),
     ('anon',          'public.is_admin()',              false)
   ) as want(role_name, sig, should)

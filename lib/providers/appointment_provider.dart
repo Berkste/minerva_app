@@ -55,15 +55,18 @@ class AppointmentProvider extends ChangeNotifier {
 
   Appointment? get nextAppointment => upcoming.isEmpty ? null : upcoming.first;
 
-  /// Signs in, then loads bookings and profile. Safe to call more than once.
+  /// Loads this device's bookings and profile. Safe to call more than once.
+  ///
+  /// Does NOT sign in. Opening the app creates nothing in the database — a
+  /// device without a session simply has no bookings and no profile, and the
+  /// repository answers both without a round trip. The identity is created on
+  /// the first real action (see [book]).
   Future<void> load() async {
     _state = LoadState.loading;
     _error = null;
     notifyListeners();
 
     try {
-      await _repository.ensureSignedIn();
-
       final results = await Future.wait([
         _repository.fetchMyAppointments(),
         _repository.fetchProfile(),

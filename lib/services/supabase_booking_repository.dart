@@ -42,6 +42,9 @@ class SupabaseBookingRepository implements BookingRepository {
   @override
   Future<void> ensureSignedIn() async {
     if (_client.auth.currentSession != null) return;
+    // Deliberately NOT called at launch. Opening the app must not write
+    // anything to the database; an identity is created at the moment the
+    // customer commits to something, and only then.
     // Anonymous sign-in gives the device a durable user id without asking
     // anyone to register. It can later be upgraded to a phone or email
     // identity, and the existing bookings come along with it.
@@ -50,6 +53,10 @@ class SupabaseBookingRepository implements BookingRepository {
 
   @override
   Future<List<Appointment>> fetchMyAppointments() async {
+    // No session means this device has never booked, so it has no bookings —
+    // an empty list rather than an error, and no round trip to find that out.
+    if (currentUserId == null) return const <Appointment>[];
+
     final userId = _requireUserId();
 
     final rows = await _guard(
@@ -102,6 +109,10 @@ class SupabaseBookingRepository implements BookingRepository {
     required String phone,
     String? serviceId,
   }) async {
+    // The moment a guest becomes a user: an anonymous identity is created here,
+    // on a deliberate action, rather than at launch. A device that only browsed
+    // leaves no trace in the database.
+    await ensureSignedIn();
     final userId = _requireUserId();
 
     final draft = Appointment(
@@ -146,6 +157,9 @@ class SupabaseBookingRepository implements BookingRepository {
 
   @override
   Future<Profile?> fetchProfile() async {
+    // Same as above: no identity yet, so no saved details yet.
+    if (currentUserId == null) return null;
+
     final userId = _requireUserId();
 
     final row = await _guard(
@@ -161,6 +175,10 @@ class SupabaseBookingRepository implements BookingRepository {
     required String lastName,
     required String phone,
   }) async {
+    // Belt and braces. Today this is only ever reached from book(), which has
+    // already signed in, and ensureSignedIn() is idempotent — but a profile
+    // write needs an identity, and that should not depend on the caller.
+    await ensureSignedIn();
     final userId = _requireUserId();
 
     final profile = Profile(

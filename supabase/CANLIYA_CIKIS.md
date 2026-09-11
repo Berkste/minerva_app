@@ -32,6 +32,27 @@ Personel hesabı: **`admin@minerva.com.tr`** (`8ee7ffc9-b007-46ac-b6a8-7dd2d69fe
 
 ## 🟡 Kalan işler
 
+### 0. Yeni migration'ı uygula (önce bu)
+
+`supabase/migrations/20260911120000_browse_before_signin.sql` — tek satır:
+
+```sql
+grant execute on function public.booked_slots(date, date) to anon;
+```
+
+**Neden:** uygulama artık açılışta oturum açmıyor, dolayısıyla randevu ızgarası
+oturumsuz bir çağıranın da yüklenebilmesi gerekiyor. `booked_slots()` security
+definer ve yalnızca `(slot_date, slot_hour)` döndürüyor — isim, telefon, kullanıcı
+id'si yok. Yani oturumsuz çağıran, salona girip "saat dörtte boş musunuz?" diye
+soran birinin öğrendiğinden fazlasını öğrenmiyor.
+
+`is_admin()` **bilerek** anon'a verilmedi; personel yetkisi hâlâ gerçek oturum
+istiyor.
+
+Uyguladıktan sonra `01_schema_audit.sql`'i tekrar çalıştır: artık
+`anon may execute public.booked_slots(date,date)` satırı **actual=true** ve OK
+olmalı (denetim dosyasındaki beklenti de bu yönde güncellendi).
+
 ### 1. APK/IPA'ları yeniden derle
 
 Zorunlu: `MN001` değişikliği hem veritabanını hem uygulamayı ilgilendiriyor.
@@ -50,9 +71,12 @@ flutter build apk --release --flavor admin
 - **Geçmiş saat:** cihaz saatini ileri alıp geçmiş bir slota rezervasyon dene →
   **"bu saat geçti"** mesajı gelmeli. `MN001` eşlemesinin canlı doğrulaması budur
   (birim testi artık var, ama uçtan uca yolu yalnızca bu doğrular).
-- **Temizlik:** test sırasında oluşan anonim kullanıcılar ve randevular veritabanında
-  kalır. Canlıya açmadan önce silmek istersen `03` Section 3'ü **o an** kullan —
-  gerçek müşteri girmeden önce.
+- **Kayıt oluşmadığını doğrula:** uygulamayı aç, gez, randevu **alma** ve kapat.
+  Ardından `02_data_audit.sql`'in 3. sorgusunu çalıştır — anonim kullanıcı satırı
+  **hiç gelmemeli**. Sonra bir randevu al ve tekrar çalıştır: tam **1** anonim
+  kullanıcı görünmeli. Bu, yeni davranışın uçtan uca kanıtı.
+- **Temizlik:** duman testinde oluşturduğun randevular veritabanında kalır.
+  Gerçek müşteriler girmeden önce silmek istersen `03` Section 3'ü **o an** kullan.
 
 ### 3. Dağıtım
 

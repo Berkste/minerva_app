@@ -287,13 +287,35 @@ void main() {
   });
 
   group('Loading and offline', () {
-    test('sign-in happens before anything is read', () async {
+    test('opening the app signs in nobody and writes nothing', () async {
+      // The database must only ever hold people who actually did something.
+      // Browsing the salon's availability is not doing something, so a launch
+      // that ends without a booking leaves no auth.users row behind.
       final repo = FakeBookingRepository();
       expect(repo.signedIn, isFalse);
 
-      await providerFor(repo);
+      final provider = await providerFor(repo);
+
+      expect(repo.signedIn, isFalse);
+      expect(provider.upcoming, isEmpty);
+      expect(provider.profile, isNull);
+    });
+
+    test('the first booking is what creates the identity', () async {
+      final repo = FakeBookingRepository();
+      final provider = await providerFor(repo);
+      expect(repo.signedIn, isFalse);
+
+      await provider.book(
+        slot: slot,
+        firstName: 'Ayse',
+        lastName: 'Celik',
+        phone: '5551234567',
+      );
+
       expect(repo.signedIn, isTrue);
     });
+
 
     test('falls back to the cache when the network is down', () async {
       final repo = FakeBookingRepository();

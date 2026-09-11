@@ -83,7 +83,8 @@ class MinervaApp extends StatelessWidget {
       providers: [
         Provider<BookingRepository>.value(value: repository),
 
-        // Signs in, then loads this device's bookings and profile.
+        // Loads this device's bookings and profile, if it has any. Does not
+        // sign in: an identity is created on the first real booking.
         ChangeNotifierProvider(
           create: (_) => AppointmentProvider(repository)..load(),
         ),

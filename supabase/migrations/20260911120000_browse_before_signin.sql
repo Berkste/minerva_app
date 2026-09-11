@@ -1,0 +1,22 @@
+-- Minerva Nail Art — let the booking grid load before there is a session.
+--
+-- Until now the app signed in anonymously at launch, which meant every device
+-- that merely opened the app wrote a row into auth.users — whether or not the
+-- person ever booked anything. Sign-in is moving to the moment the customer
+-- actually confirms a booking, so the database only ever holds people who did
+-- something.
+--
+-- That leaves one thing to fix here: the availability grid has to work for a
+-- caller who has no identity yet, and booked_slots() was granted to
+-- `authenticated` only.
+--
+-- Granting it to `anon` is safe, and it is the same function either way: it is
+-- security definer and returns nothing but (slot_date, slot_hour) for confirmed
+-- bookings — no name, no phone, no user id. An unauthenticated caller learns
+-- exactly what any customer standing in the salon learns by asking "are you
+-- free at four?", and nothing else.
+--
+-- is_admin() is deliberately NOT granted to anon. Staff authorization still
+-- requires a real session.
+
+grant execute on function public.booked_slots(date, date) to anon;

@@ -569,7 +569,11 @@ void main() {
 
     testWidgets('a returning customer finds their details already filled in',
         (tester) async {
+      // A returning customer: they have a saved profile because they saved it,
+      // which means this device already has an identity. The two go together
+      // now — a profile cannot exist without the session that created it.
       final repo = FakeBookingRepository()
+        ..signedIn = true
         ..profile = const Profile(
           id: 'user-1',
           firstName: 'Ayse',
@@ -639,7 +643,11 @@ void main() {
       tester.platformDispatcher.localesTestValue = const [Locale('en')];
       addTearDown(tester.platformDispatcher.clearLocalesTestValue);
 
+      // A returning customer: they have a saved profile because they saved it,
+      // which means this device already has an identity. The two go together
+      // now — a profile cannot exist without the session that created it.
       final repo = FakeBookingRepository()
+        ..signedIn = true
         ..profile = const Profile(
           id: 'user-1',
           firstName: 'Ayse',

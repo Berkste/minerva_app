@@ -54,6 +54,9 @@ class FakeBookingRepository implements BookingRepository {
   Future<List<Appointment>> fetchMyAppointments() async {
     final failure = failOnLoad;
     if (failure != null) throw failure;
+    // Mirrors the real repository: no session means no identity, so no
+    // bookings — and crucially, no sign-in triggered by a mere read.
+    if (!signedIn) return const <Appointment>[];
     return appointments.where((a) => a.userId == userId).toList();
   }
 
@@ -84,6 +87,9 @@ class FakeBookingRepository implements BookingRepository {
 
     final failure = failOnBook;
     if (failure != null) throw failure;
+
+    // Booking is what creates the identity, exactly as in the real repository.
+    await ensureSignedIn();
 
     await onBeforeBook?.call();
 
@@ -118,6 +124,7 @@ class FakeBookingRepository implements BookingRepository {
   Future<Profile?> fetchProfile() async {
     final failure = failOnLoad;
     if (failure != null) throw failure;
+    if (!signedIn) return null;
     return profile;
   }
 
@@ -127,6 +134,8 @@ class FakeBookingRepository implements BookingRepository {
     required String lastName,
     required String phone,
   }) async {
+    await ensureSignedIn();
+
     profile = Profile(
       id: userId,
       firstName: firstName,

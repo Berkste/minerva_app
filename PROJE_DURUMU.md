@@ -423,12 +423,16 @@ uygulamaya girmiş mi.
   kullanılmayan `profiles_select_admin` policy'si kaldırıldı
 - Hata eşlemesi test edilebilir saf fonksiyona çıkarıldı + `test/error_mapping_test.dart`
 - Eski `edit_20260827` ve `supbase_work` branch'leri silindi (ikisi de `main`'de)
-- **236/236 test geçiyor**, `flutter analyze` temiz
+- **Açılışta otomatik kayıt oluşturma kaldırıldı:** uygulama artık açılışta anonim
+  oturum açmıyor. Kimlik, müşteri gerçekten randevu onayladığı anda oluşuyor;
+  sadece gezen bir cihaz veritabanında iz bırakmıyor
+- **237/237 test geçiyor**, `flutter analyze` temiz
 
 ### 🟡 Sırada bekleyen — SEN yapacaksın
 **→ `supabase/CANLIYA_CIKIS.md`**
 
-Özet: APK'ları yeniden derle (**eski build `MN001`'i tanımaz**) → duman testi
+Özet: **yeni migration'ı uygula** (`20260911120000_browse_before_signin.sql`) →
+APK'ları yeniden derle (**eski build `MN001`'i tanımaz**) → duman testi
 (özellikle geçmiş-saat senaryosu) → Android sideload + iOS TestFlight dağıtımı →
 panel ayarları kontrol listesi → canlı kullanıcı testi.
 
@@ -443,6 +447,12 @@ panel ayarları kontrol listesi → canlı kullanıcı testi.
 | Canlı test | Dağıtımdan sonra gerçek kullanıcılarla |
 
 ### Sonraya bırakılanlar (bilinçli)
-- **Android upload keystore** — AAB/APK yükleme anında oluşturulacak
+- **Android upload keystore** — AAB/APK yükleme anında oluşturulacak. O zamana
+  kadar release APK'lar **debug anahtarıyla** imzalanıyor: sideload testi için
+  sorunsuz, Play Store yüklemesi için reddedilir
+- **iOS admin flavor'ı yok** — `ios/` altında tek `Runner` scheme'i ve tek bundle
+  id (`com.oberk.minerva`) var. Yani `flutter build ios --flavor admin` çalışmaz
+  ve TestFlight'ta personel uygulaması için ayrı bir kayıt açılamaz. Mac mini
+  oturumunda Xcode tarafında scheme + configuration + ayrı bundle id kurulacak
 - **iOS release derlemesi** — Mac mini üzerinde, Claude Code bu projede
   çalıştırılarak test ve release kontrolü yapılacak
