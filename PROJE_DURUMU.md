@@ -478,8 +478,22 @@ Android sideload dağıtımı → panel ayarları kontrol listesi.
   Mac mini oturumunda Xcode'da scheme + configuration + ayrı bundle id kurulacak;
   Apple Developer tarafında da ikinci bir App ID gerekecek
 
-### ❓ Açık kalan tek soru
-Müşteri tarafında **gerçek üyelik** (e-posta/şifre ile kayıt) istenip
-istenmediği. Şu anki tasarım üyeliksiz: kimlik, randevu onaylandığı anda anonim
-olarak oluşuyor. Gerçek üyelik istenirse kayıt/giriş ekranları, e-posta
-doğrulama ve şifre sıfırlama gerekir — ayrı bir faz.
+### 🔽 Faz 2 — yeni iş akışı
+
+Yeni kullanıcı/admin iş akışı tanımlandı ve dokuz karar kilitlendi. Ayrıntılı
+analiz, hedef veri modeli ve fazlı iş planı:
+
+- **`FAZ2_ANALIZ.md`** (repo)
+- **Okunabilir sayfa:** https://claude.ai/code/artifact/e4154db4-2bd4-4e4a-a578-608a60024690
+
+Özet: kimlik modeli **B** seçildi — kişi kaydı `auth.users`'tan ayrılıp
+`customers` tablosuna taşınıyor, telefon numarası kişiyi tanımlıyor,
+**OTP/e-posta yok**. Gerçek fiyat listesi geldi (7 ana işlem + 8 ekstra) ve
+uygulamadaki dört sabit hizmetin hiçbirini içermiyor.
+
+⚠️ **Sıra kısıtı:** veritabanı şu an boş, bu yüzden şema göçü bugün bedava.
+Gerçek müşteriler girmeden **önce** yapılmalı — sonrasında aynı iş veri taşıma
+işine dönüşür.
+
+Üç soru işe başlamadan cevap bekliyor (Y1 telefonla sahiplenme sınırlamaları,
+Y2 soyad opsiyonel mi, Y3 ekstraları kim seçiyor).
