@@ -486,14 +486,21 @@ analiz, hedef veri modeli ve fazlı iş planı:
 - **`FAZ2_ANALIZ.md`** (repo)
 - **Okunabilir sayfa:** https://claude.ai/code/artifact/e4154db4-2bd4-4e4a-a578-608a60024690
 
-Özet: kimlik modeli **B** seçildi — kişi kaydı `auth.users`'tan ayrılıp
-`customers` tablosuna taşınıyor, telefon numarası kişiyi tanımlıyor,
-**OTP/e-posta yok**. Gerçek fiyat listesi geldi (7 ana işlem + 8 ekstra) ve
-uygulamadaki dört sabit hizmetin hiçbirini içermiyor.
+**Tasarım kesinleşti — açık soru kalmadı.** 18 kararın tamamı alındı:
+
+- Kimlik modeli **B** — kişi kaydı `auth.users`'tan ayrılıp `customers` tablosuna
+  taşınıyor, telefon numarası kişiyi tanımlıyor, **OTP/e-posta yok**
+- Gerçek katalog: 7 ana işlem + 8 ekstra. Müşteri yalnızca ana işlemi seçer,
+  ekstraları salon sonradan girer
+- Tutar `sum(appointment_services.amount)` ile **türetiliyor** — `total_amount`
+  kolonu yok, çünkü admin'in düzenlediği şey satırların kendisi
+- "Tamamlandı" da türetiliyor (saati 1 saat geçmiş ve iptal edilmemiş) — zamanlanmış
+  iş (`pg_cron`) gerekmiyor
+- Soyad nullable, soft delete her yerde, Pazar kapalı, 21 gün simetrik pencere
+
+**İki varsayım** işaretli: V1 `no_show` pencereye sayılır, V2 Pazar'a admin randevu
+girebilir. İkisi de tek satırlık SQL ile geri alınabilir.
 
 ⚠️ **Sıra kısıtı:** veritabanı şu an boş, bu yüzden şema göçü bugün bedava.
 Gerçek müşteriler girmeden **önce** yapılmalı — sonrasında aynı iş veri taşıma
 işine dönüşür.
-
-Üç soru işe başlamadan cevap bekliyor (Y1 telefonla sahiplenme sınırlamaları,
-Y2 soyad opsiyonel mi, Y3 ekstraları kim seçiyor).
