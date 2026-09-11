@@ -452,9 +452,10 @@ denetimde çifte onaylı slot çıkmadı; uygulama tarafı da
 ### 🟡 Sırada bekleyen — SEN yapacaksın
 **→ `supabase/CANLIYA_CIKIS.md`**
 
-Özet: **yeni migration'ı uygula** (`20260911120000_browse_before_signin.sql`) →
-APK'ları yeniden derle (**eski build `MN001`'i tanımaz**) → duman testi →
+Özet: APK'ları yeniden derle (**eski build `MN001`'i tanımaz**) → duman testi →
 Android sideload dağıtımı → panel ayarları kontrol listesi.
+
+`20260911120000_browse_before_signin.sql` **uygulandı** (2026-09-11).
 
 > ⚠️ `03_production_reset.sql` artık **çalıştırılmamalı**. Section 3'ün anonim
 > kullanıcı silme sorgusu bundan sonra gerçek müşterileri siler.

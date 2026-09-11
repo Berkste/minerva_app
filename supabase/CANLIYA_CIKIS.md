@@ -32,7 +32,7 @@ Personel hesabı: **`admin@minerva.com.tr`** (`8ee7ffc9-b007-46ac-b6a8-7dd2d69fe
 
 ## 🟡 Kalan işler
 
-### 0. Yeni migration'ı uygula (önce bu)
+### 0. ✅ Yeni migration'ı uygula — **YAPILDI (2026-09-11)**
 
 `supabase/migrations/20260911120000_browse_before_signin.sql` — tek satır:
 
