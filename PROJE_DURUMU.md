@@ -92,6 +92,7 @@ Projenin etrafında döndüğü garanti burada kuruldu:
 **Commit `5c66e25`** — *Fix release-build blockers found in production readiness audit*
 - `android/app/build.gradle.kts`, `AndroidManifest.xml`, `analysis_options.yaml` düzeltmeleri
 - `tool/concurrency_probe.dart` — canlı veritabanına karşı yarış denemesi yapan yardımcı script
+  *(2026-09-11'de silindi — aşağıya bakınız)*
 
 **Commit `a9c1d44`** (branch `feature/bundle-fonts` → merge `ccbd1fb`) — *Bundle Poppins locally*
 - `google_fonts` bağımlılığı kaldırıldı; Poppins 400/500/600/700 `assets/fonts/` altına gömüldü (OFL lisansı dahil)
@@ -187,7 +188,7 @@ lib/
 test/
   widget_test · render_test · booking_concurrency_test · admin_test
   fake_booking_repository.dart   Unique index'i taklit eden bellek içi backend
-tool/concurrency_probe.dart      Canlı veritabanına karşı yarış denemesi
+  error_mapping_test.dart        Postgres hata kodu → müşteri mesajı eşlemesi
 ```
 
 **Supabase test projesi:** ref `dycjvupgvuxkguorzaqz` · anonim giriş **açık** · admin migration uygulandı (ilk kısmi uygulamadan sonra idempotent tekrar çalıştırmayla düzeltildi).
@@ -376,7 +377,6 @@ daha önce doğrulanmıştı). Release build'ler: müşteri **52.1 MB**, admin *
 | Testler | `flutter test` |
 | Statik analiz | `flutter analyze` |
 | Dil dosyaları | `flutter gen-l10n` (build sırasında otomatik) |
-| Yarış denemesi (canlı DB) | `dart run tool/concurrency_probe.dart` |
 
 ---
 
@@ -417,24 +417,44 @@ uygulamaya girmiş mi.
 - Admin build ayrımı + gün takvimi → `main`'e merge edildi
 - Android product flavor (`0644b72`): `com.oberk.minerva` / `com.oberk.minerva.admin`
 - **Supabase canlıya alındı** — A yolu (temiz yeniden uygulama) uygulandı,
-  `01_schema_audit.sql` sıfır FAIL / sıfır WARN döndü, veri tabanı boş ve tek
-  personel hesabı yetkili
+  `01_schema_audit.sql` sıfır FAIL / sıfır WARN döndü
 - İki uyumluluk bulgusu giderildi: trigger'a özel `MN001` SQLSTATE'i verildi,
   kullanılmayan `profiles_select_admin` policy'si kaldırıldı
 - Hata eşlemesi test edilebilir saf fonksiyona çıkarıldı + `test/error_mapping_test.dart`
-- Eski `edit_20260827` ve `supbase_work` branch'leri silindi (ikisi de `main`'de)
-- **Açılışta otomatik kayıt oluşturma kaldırıldı:** uygulama artık açılışta anonim
-  oturum açmıyor. Kimlik, müşteri gerçekten randevu onayladığı anda oluşuyor;
-  sadece gezen bir cihaz veritabanında iz bırakmıyor
+- **Otomatik kayıt oluşturma tamamen kaldırıldı** (aşağıda ayrı başlık)
+- Eski `edit_20260827` ve `supbase_work` branch'leri silindi
 - **237/237 test geçiyor**, `flutter analyze` temiz
+
+### 🔒 Veritabanına yazma garantisi
+
+Karar: **kullanıcı UI'dan bir eylem yapmadıkça hiçbir kayıt oluşmaz.** Ne
+`flutter run`, ne `flutter build` ile kurulan bir uygulama, ne de repoda duran
+herhangi bir script arka planda satır yazar.
+
+Uygulamadaki **tüm** yazma noktaları ve hangi eyleme bağlı oldukları:
+
+| `supabase_booking_repository.dart` | Yazma | Tetikleyen eylem |
+|---|---|---|
+| `ensureSignedIn()` | `auth.users` satırı | Yalnızca `book()` ve `saveProfile()` içinden çağrılır — açılışta **çağrılmaz** |
+| `book()` | `appointments` insert | Müşteri randevuyu onaylar |
+| `cancel()` | `appointments` update | Müşteri randevusunu iptal eder |
+| `saveProfile()` | `profiles` upsert | `book()` içinden, randevuyla birlikte |
+| `adminCancel()` | `appointments` update | Personel randevu iptal eder |
+
+Ayrıca `tool/concurrency_probe.dart` **silindi** (2026-09-11). Canlı veritabanına
+karşı anonim kullanıcı havuzu + randevu üreten elle çalıştırılan bir araçtı;
+`flutter run`/`build` ile hiç çalışmıyordu ama artık işaret ettiği proje canlı
+olduğu için repoda tutulmadı. Gerekirse `13d1773` öncesi geçmişten geri alınabilir.
+Yarış korumasının kendisi yerinde: kısmi unique index şemada duruyor ve canlı
+denetimde çifte onaylı slot çıkmadı; uygulama tarafı da
+`booking_concurrency_test.dart` ile test ediliyor.
 
 ### 🟡 Sırada bekleyen — SEN yapacaksın
 **→ `supabase/CANLIYA_CIKIS.md`**
 
 Özet: **yeni migration'ı uygula** (`20260911120000_browse_before_signin.sql`) →
-APK'ları yeniden derle (**eski build `MN001`'i tanımaz**) → duman testi
-(özellikle geçmiş-saat senaryosu) → Android sideload + iOS TestFlight dağıtımı →
-panel ayarları kontrol listesi → canlı kullanıcı testi.
+APK'ları yeniden derle (**eski build `MN001`'i tanımaz**) → duman testi →
+Android sideload dağıtımı → panel ayarları kontrol listesi.
 
 > ⚠️ `03_production_reset.sql` artık **çalıştırılmamalı**. Section 3'ün anonim
 > kullanıcı silme sorgusu bundan sonra gerçek müşterileri siler.
@@ -444,6 +464,7 @@ panel ayarları kontrol listesi → canlı kullanıcı testi.
 |---|---|
 | Personel hesabı | `admin@minerva.com.tr` — gerçek ve tek admin hesabı |
 | Personel dağıtımı | Android sideload APK + iOS TestFlight, testi Berk yapacak |
+| **iOS testi** | **20 Eylül 2026'dan sonra**, Mac mini üzerinde |
 | Canlı test | Dağıtımdan sonra gerçek kullanıcılarla |
 
 ### Sonraya bırakılanlar (bilinçli)
@@ -451,8 +472,13 @@ panel ayarları kontrol listesi → canlı kullanıcı testi.
   kadar release APK'lar **debug anahtarıyla** imzalanıyor: sideload testi için
   sorunsuz, Play Store yüklemesi için reddedilir
 - **iOS admin flavor'ı yok** — `ios/` altında tek `Runner` scheme'i ve tek bundle
-  id (`com.oberk.minerva`) var. Yani `flutter build ios --flavor admin` çalışmaz
-  ve TestFlight'ta personel uygulaması için ayrı bir kayıt açılamaz. Mac mini
-  oturumunda Xcode tarafında scheme + configuration + ayrı bundle id kurulacak
-- **iOS release derlemesi** — Mac mini üzerinde, Claude Code bu projede
-  çalıştırılarak test ve release kontrolü yapılacak
+  id (`com.oberk.minerva`) var. `flutter build ios --flavor admin` çalışmaz ve
+  TestFlight'ta personel uygulaması için ayrı kayıt açılamaz. 20 Eylül sonrası
+  Mac mini oturumunda Xcode'da scheme + configuration + ayrı bundle id kurulacak;
+  Apple Developer tarafında da ikinci bir App ID gerekecek
+
+### ❓ Açık kalan tek soru
+Müşteri tarafında **gerçek üyelik** (e-posta/şifre ile kayıt) istenip
+istenmediği. Şu anki tasarım üyeliksiz: kimlik, randevu onaylandığı anda anonim
+olarak oluşuyor. Gerçek üyelik istenirse kayıt/giriş ekranları, e-posta
+doğrulama ve şifre sıfırlama gerekir — ayrı bir faz.
