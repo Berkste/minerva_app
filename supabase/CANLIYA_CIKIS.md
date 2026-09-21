@@ -1,136 +1,147 @@
-# Canlıya çıkış — uygulama adımları
+# Faz 1 — şema göçü: uygulama adımları
 
-**Proje:** `dycjvupgvuxkguorzaqz` · **Veritabanı durumu:** ✅ tamam (2026-09-11)
+**Proje:** `dycjvupgvuxkguorzaqz` · **Hazırlandı:** 2026-09-21 · **Durum:** uygulanmayı bekliyor
+
+Bu dosya, Faz 2 tasarımının veritabanı tarafını canlıya almak için **senin**
+yapacağın işleri sırasıyla anlatır. Tasarımın gerekçesi `FAZ2_ANALIZ.md`'de.
 
 ---
 
-## ✅ Bitti — veritabanı canlıya hazır
+## ⛔ Önce oku — bunu ne zaman çalıştırmalısın
 
-Temiz yeniden uygulama (A yolu) yapıldı ve doğrulandı. `01_schema_audit.sql`
-**sıfır FAIL, sıfır WARN** döndü; daha önce kırmızı olan üç satır ve yeni eklenen
-kontrol artık yeşil:
+**Bu göç, uygulama kodu henüz yeni şemaya göre yazılmadan hazırlandı.**
+`lib/` altındaki kod bugün hâlâ `profiles`, `user_id` ve tek bir `service_id`
+kolonu kullanıyor; bunların hepsi kalkıyor.
 
-| Kontrol | Sonuç |
+Yani: **SQL'i çalıştırdığın an mevcut uygulama çalışmayı bırakır.** Bu bir hata
+değil, sıranın kendisi — Faz 2'de kod yeni şemaya taşınacak.
+
+Üç seçenek var, tercihin bana bağlı değil:
+
+- **Şimdi çalıştır** — veritabanı tarafı bitmiş olur, uygulama Faz 2 bitene kadar
+  kullanılamaz. Gerçek kullanıcı olmadığı için pratikte bir kaybı yok.
+- **Faz 2 bitince çalıştır** — ikisi aynı anda canlıya gider, arada hiçbir şey
+  bozulmaz. **Önerim bu.**
+- Şu an hiç çalıştırma, Faz 2'yi yazarken karar ver.
+
+Hangisini seçersen seç, aşağıdaki adımlar aynı.
+
+---
+
+## Ne değişiyor
+
+| Eski | Yeni |
 |---|---|
-| `admins.created_at` | OK — kolon yerinde |
-| `admins → auth.users on delete cascade` | OK — `on delete = c` |
-| `anon may execute public.is_admin()` | OK — `actual=false` |
-| `reject_past_appointments() raises its own SQLSTATE` | OK — **raises MN001** |
-| `profiles_select_admin` | Hiç görünmüyor, "unexpected policy" uyarısı da yok |
-
-`02_data_audit.sql`: 0 randevu, 0 profil, 1 admin, 1 auth kullanıcı (sadece
-personel), anonim kullanıcı yok, çifte onaylı slot yok, bozuk invariant yok.
-
-Personel hesabı: **`admin@minerva.com.tr`** (`8ee7ffc9-b007-46ac-b6a8-7dd2d69fec44`),
-`admin_since 2026-09-11` — gerçek ve tek admin hesabı olarak karara bağlandı.
-
-> ⚠️ **Bundan sonra `03_production_reset.sql`'i çalıştırma.** Section 3'teki
-> `delete from auth.users where coalesce(is_anonymous, false)` artık test
-> cihazlarını değil, gerçek müşterileri siler. Dosya kayıt olarak duruyor.
+| `profiles` (kimlik = cihaz) | `customers` (kimlik = telefon) + `customer_devices` |
+| `appointments.user_id` → `auth.users` | `appointments.customer_id` → `customers` |
+| `service_id` kolonu + CHECK kısıtı | `services` tablosu + `appointment_services` satırları |
+| 2 durum (`confirmed`, `cancelled`) | 4 durum (+ `completed`, `no_show`) |
+| Gerçek silme yok, kolon da yok | Her tabloda `deleted_at` — soft delete |
+| 1 kural trigger'ı (`MN001`) | 5 trigger: `MN001`–`MN005` |
+| — | `salon_closures` (Pazar + tatil günleri) |
 
 ---
 
-## 🟡 Kalan işler
+## Adımlar
 
-### 0. ✅ Yeni migration'ı uygula — **YAPILDI (2026-09-11)**
+### 0. Kontrol et — gerçekten boş mu?
 
-`supabase/migrations/20260911120000_browse_before_signin.sql` — tek satır:
+`04_faz2_reset.sql`'in başındaki sorgu bunun için var. Çalıştır:
 
 ```sql
-grant execute on function public.booked_slots(date, date) to anon;
+select
+  (select count(*) from public.appointments)                            as appointments,
+  (select count(*) from public.profiles)                                as profiles,
+  (select count(*) from auth.users where coalesce(is_anonymous, false)) as anonymous_users,
+  (select count(*) from public.admins)                                  as staff;
 ```
 
-**Neden:** uygulama artık açılışta oturum açmıyor, dolayısıyla randevu ızgarası
-oturumsuz bir çağıranın da yüklenebilmesi gerekiyor. `booked_slots()` security
-definer ve yalnızca `(slot_date, slot_hour)` döndürüyor — isim, telefon, kullanıcı
-id'si yok. Yani oturumsuz çağıran, salona girip "saat dörtte boş musunuz?" diye
-soran birinin öğrendiğinden fazlasını öğrenmiyor.
+**Beklenen: 0 · 0 · 0 · 1.**
 
-`is_admin()` **bilerek** anon'a verilmedi; personel yetkisi hâlâ gerçek oturum
-istiyor.
+Başka bir şey görürsen **dur ve bana söyle** — biri uygulamayı kullanmış demektir
+ve bu göç onun randevularını da götürür. 11 Eylül'den bu yana zaman geçti, bu
+yüzden bu adım atlanmamalı.
 
-Uyguladıktan sonra `01_schema_audit.sql`'i tekrar çalıştır: artık
-`anon may execute public.booked_slots(date,date)` satırı **actual=true** ve OK
-olmalı (denetim dosyasındaki beklenti de bu yönde güncellendi).
+### 1. (İsteğe bağlı) Yedek
 
-### 1. APK/IPA'ları yeniden derle
+Panel → **Database → Backups**. Atılacak veri değersiz ama ihtiyaç duymadığın bir
+yedek, tersinden iyidir.
 
-Zorunlu: `MN001` değişikliği hem veritabanını hem uygulamayı ilgilendiriyor.
-Elindeki eski build hâlâ `23514` bekliyor; onunla test edersen geçmiş-saat hatası
-yanlış görünür. Flavor'sız komut da artık çalışmaz:
+### 2. Eski şemayı düşür
 
+`supabase/checks/04_faz2_reset.sql` → **Section 1**'deki `/* */` bloğunu aç ve
+çalıştır.
+
+### 3. Yeni şemayı kur
+
+SQL editöründe, bu sırayla, her birini ayrı çalıştır:
+
+1. `supabase/migrations/20260921120000_schema.sql`
+2. `supabase/migrations/20260921120100_catalogue.sql`
+
+İkincisi bir özet sorgusuyla bitiyor: **7 satır `main`, 8 satır `extra`** görmelisin.
+
+### 4. Personel yetkisini geri ver
+
+> ⚠️ Bu adım bitene kadar admin uygulaması kilitli — `admins` tablosu yeniden
+> kuruldu ve boş. Personel hesabının kendisi `auth.users`'da duruyor, kaybolmadı.
+
+```sql
+insert into public.admins (id)
+values ('8ee7ffc9-b007-46ac-b6a8-7dd2d69fec44')
+on conflict (id) do nothing;
 ```
-flutter build apk --release --flavor customer
-flutter build apk --release --flavor admin
+
+Doğrula — tam **1** satır, `admin@minerva.com.tr`:
+
+```sql
+select ad.id, u.email, ad.created_at as admin_since
+from public.admins ad left join auth.users u on u.id = ad.id;
 ```
 
-### 2. Duman testi (senin cihazlarında)
+### 5. Denetimi çalıştır
 
-- **Müşteri:** anonim giriş → randevu al → "randevularım"da görünsün → iptal et
-- **Personel:** `admin@minerva.com.tr` ile giriş → gün takviminde o randevuyu gör → iptal et
-- **Geçmiş saat:** cihaz saatini ileri alıp geçmiş bir slota rezervasyon dene →
-  **"bu saat geçti"** mesajı gelmeli. `MN001` eşlemesinin canlı doğrulaması budur
-  (birim testi artık var, ama uçtan uca yolu yalnızca bu doğrular).
-- **Kayıt oluşmadığını doğrula:** uygulamayı aç, gez, randevu **alma** ve kapat.
-  Ardından `02_data_audit.sql`'in 3. sorgusunu çalıştır — anonim kullanıcı satırı
-  **hiç gelmemeli**. Sonra bir randevu al ve tekrar çalıştır: tam **1** anonim
-  kullanıcı görünmeli. Bu, yeni davranışın uçtan uca kanıtı.
-- **Temizlik:** duman testinde oluşturduğun randevular veritabanında kalır.
-  Gerçek müşteriler girmeden önce silmek istersen `03` Section 3'ü **o an** kullan.
+`supabase/checks/01_schema_audit.sql` → **tek bir FAIL kalmamalı.**
 
-### 3. Dağıtım
+Bu denetim baştan yazıldı ve artık kuralların gerçekten yerinde olduğunu da
+kontrol ediyor — sadece tabloların varlığını değil:
 
-- **Android:** sideload APK
-- **iOS:** TestFlight
-- İkisini de sen test edeceksin; ardından canlı test gerçek kullanıcılarla.
+- `appointments_one_active_per_slot` indeksi doğru şartla duruyor mu *(çifte
+  rezervasyon garantisi)*
+- Beş trigger da bağlı mı, `MN001`–`MN005` kodlarını gerçekten fırlatıyor mu
+- `created_by_admin` istemciden değil trigger'dan geliyor mu *(gelmiyorsa bir
+  müşteri kendini 21 gün kuralından muaf tutabilir)*
+- Hiçbir tabloda DELETE politikası yok mu *(soft delete kuralı)*
+- `anon` yalnızca `booked_slots` ve `closed_days` çağırabiliyor mu
 
-### 4. Panelde SQL'in göremediği ayarlar
+### 6. Veriyi gözden geçir
+
+`supabase/checks/02_data_audit.sql` → bölüm bölüm çalıştır. **1. sorgu boş
+dönmeli** (aynı slotta iki canlı randevu). 7. bölümde katalog özeti görünür.
+
+---
+
+## Bundan sonra
+
+Faz 2: uygulama kodunun yeni şemaya taşınması. O bitmeden uygulamayı kimseye
+dağıtmanın anlamı yok.
+
+`04_faz2_reset.sql` bu göçten sonra bir daha **çalıştırılmamalı** — ilk gerçek
+randevudan itibaren salonun kayıtlarını siler.
+
+---
+
+## Panelde SQL'in göremediği ayarlar
+
+Faz 1 bunları değiştirmiyor, ama canlıya çıkmadan önce tek tek geçilmeli:
 
 - [ ] **Authentication → Sign In / Providers**: Anonim giriş **AÇIK** (kapalıysa
       müşteri uygulaması hiç giremez), E-posta sağlayıcı **AÇIK**
-- [ ] **Şifre politikası / sızmış şifre koruması**: `admin@minerva.com.tr` her
-      müşterinin adına ve telefonuna erişiyor — açık olsun
+- [ ] **Şifre politikası / sızmış şifre koruması**: personel hesabı her müşterinin
+      adına ve telefonuna erişiyor
 - [ ] **Database → Backups**: ücretsiz planda point-in-time recovery yok. Gerçek
-      müşteri adı ve telefonu kişisel veri; planı ve saklama süresini **canlıya
-      çıkmadan** kararlaştır
-- [ ] **Project → General**: ücretsiz proje 7 gün hareketsizlikte duraklar. Salonda
-      sessiz bir hafta uygulamayı kapatır — ücretli plana geçmeyi değerlendir
+      müşteri adı ve telefonu kişisel veri
+- [ ] **Project → General**: ücretsiz proje 7 gün hareketsizlikte duraklar
 - [ ] **API → Exposed schemas**: sadece `public`
 - [ ] **Project → API keys**: `service_role` anahtarı uygulamaya, git'e veya build
       komutuna asla girmemeli
-
----
-
-## 📌 Sonraya bırakılanlar (bilinçli)
-
-| Konu | Plan |
-|---|---|
-| Android upload keystore | AAB/APK yükleme anında oluşturulacak |
-| iOS release derlemesi | Mac mini üzerinde, Claude Code bu projede çalıştırılarak yapılacak |
-
----
-
-## Geçmiş: neden bu yol seçildi
-
-İlk denetim üç FAIL döndü ve üçü de `20260828120000_admin.sql`'in git'te olup
-veritabanında olmayan parçalarıydı: `admins.created_at` yok, `admins` foreign
-key'i cascade değil, `anon` hâlâ `is_admin()` üzerinde execute tutuyor. Policy'ler
-ve fonksiyon gövdesi tutuyordu — bu, dosyanın eski bir taslağının elle uygulanıp
-bir daha çalıştırılmamış olmasının imzası (`create or replace` fonksiyonu günceller,
-`create table` ve `revoke` güncellemez).
-
-Veri tarafında saklanacak hiçbir şey yoktu: 6 test randevusu, 1 profil, 45 anonim
-cihaz, çifte onaylı slot yok. Bu yüzden şema migration dosyalarından sıfırdan
-kuruldu — ve bu, iki uyumluluk bulgusunu bedavaya düzeltmek için doğru andı:
-
-1. **`23514` çakışması giderildi.** `reject_past_appointments()` artık kendine ait
-   `MN001` SQLSTATE'ini fırlatıyor. Tablonun kendi CHECK kısıtları (telefon, isim
-   uzunluğu, saat, servis) da `23514` ürettiği için, eski eşleme müşteriye telefon
-   numarası hatalıyken "bu saat geçti" diyordu. PostgREST tanımadığı kodu HTTP
-   400'e eşliyor — yani yanıtta başka hiçbir şey değişmedi.
-2. **`profiles_select_admin` kaldırıldı.** Admin ekranları `profiles` tablosuna hiç
-   gitmiyor; iletişim bilgisi randevu satırına kopyalanıyor. Policy dururken her
-   personel, hiç randevusu olmayanlar dahil her kayıtlı müşterinin güncel telefonunu
-   okuyabiliyordu.
-
-Bu eşlemenin artık birim testi de var: `test/error_mapping_test.dart`.

@@ -164,12 +164,22 @@ Projenin etrafında döndüğü garanti burada kuruldu:
 
 ---
 
-## 4. Şu anki mimari (feature branch dahil)
+## 4. Şu anki mimari
+
+> ⚠️ **Bu bölümün veritabanı kısmı Faz 2 ile değişti.** Aşağıda anlatılan
+> `profiles` tablosu, tek `service_id` kolonu ve `user_id` bağı artık geçerli
+> değil; güncel şema `supabase/migrations/20260921120000_schema.sql` ve
+> tasarım gerekçesi `FAZ2_ANALIZ.md`. Uygulama kodu ise **henüz eski şemaya
+> göre** — Faz 2'de güncellenecek.
 
 ```
 supabase/migrations/
-  20260827120000_init.sql     Şema, RLS, tekil indeks
-  20260828120000_admin.sql    admins tablosu + is_admin() + 3 ek politika
+  20260921120000_schema.sql      Şema, RLS, 5 trigger, tekil indeksler
+  20260921120100_catalogue.sql   Hizmet kataloğu (7 ana + 8 ekstra)
+supabase/checks/
+  01_schema_audit.sql            Şema denetimi (salt okunur)
+  02_data_audit.sql              Veri denetimi (salt okunur)
+  04_faz2_reset.sql              Faz 2 öncesi eski şemayı düşürme (YIKICI)
 
 lib/
   main.dart                   MÜŞTERİ girişi (mağaza sürümü)
@@ -409,98 +419,56 @@ uygulamaya girmiş mi.
 
 ---
 
-## 11. 🔖 Son kalınan nokta — 2026-09-11
+## 11. 🔖 Son kalınan nokta — 2026-09-21
 
 **Tam olarak burada durduk.** Devam ederken önce bu bölümü oku.
 
-### Tamamlananlar
-- Admin build ayrımı + gün takvimi → `main`'e merge edildi
-- Android product flavor (`0644b72`): `com.oberk.minerva` / `com.oberk.minerva.admin`
-- **Supabase canlıya alındı** — A yolu (temiz yeniden uygulama) uygulandı,
-  `01_schema_audit.sql` sıfır FAIL / sıfır WARN döndü
-- İki uyumluluk bulgusu giderildi: trigger'a özel `MN001` SQLSTATE'i verildi,
-  kullanılmayan `profiles_select_admin` policy'si kaldırıldı
-- Hata eşlemesi test edilebilir saf fonksiyona çıkarıldı + `test/error_mapping_test.dart`
-- **Otomatik kayıt oluşturma tamamen kaldırıldı** (aşağıda ayrı başlık)
-- Eski `edit_20260827` ve `supbase_work` branch'leri silindi
-- **237/237 test geçiyor**, `flutter analyze` temiz
+### Faz 1 yazıldı, uygulanmayı bekliyor
 
-### 🔒 Veritabanına yazma garantisi
+Faz 2 tasarımının veritabanı tarafı hazır. Şema **konsolide edildi** (b yolu):
+üç eski migration dosyası kaldırıldı, yerine iki yeni dosya geldi.
 
-Karar: **kullanıcı UI'dan bir eylem yapmadıkça hiçbir kayıt oluşmaz.** Ne
-`flutter run`, ne `flutter build` ile kurulan bir uygulama, ne de repoda duran
-herhangi bir script arka planda satır yazar.
-
-Uygulamadaki **tüm** yazma noktaları ve hangi eyleme bağlı oldukları:
-
-| `supabase_booking_repository.dart` | Yazma | Tetikleyen eylem |
-|---|---|---|
-| `ensureSignedIn()` | `auth.users` satırı | Yalnızca `book()` ve `saveProfile()` içinden çağrılır — açılışta **çağrılmaz** |
-| `book()` | `appointments` insert | Müşteri randevuyu onaylar |
-| `cancel()` | `appointments` update | Müşteri randevusunu iptal eder |
-| `saveProfile()` | `profiles` upsert | `book()` içinden, randevuyla birlikte |
-| `adminCancel()` | `appointments` update | Personel randevu iptal eder |
-
-Ayrıca `tool/concurrency_probe.dart` **silindi** (2026-09-11). Canlı veritabanına
-karşı anonim kullanıcı havuzu + randevu üreten elle çalıştırılan bir araçtı;
-`flutter run`/`build` ile hiç çalışmıyordu ama artık işaret ettiği proje canlı
-olduğu için repoda tutulmadı. Gerekirse `13d1773` öncesi geçmişten geri alınabilir.
-Yarış korumasının kendisi yerinde: kısmi unique index şemada duruyor ve canlı
-denetimde çifte onaylı slot çıkmadı; uygulama tarafı da
-`booking_concurrency_test.dart` ile test ediliyor.
-
-### 🟡 Sırada bekleyen — SEN yapacaksın
-**→ `supabase/CANLIYA_CIKIS.md`**
-
-Özet: APK'ları yeniden derle (**eski build `MN001`'i tanımaz**) → duman testi →
-Android sideload dağıtımı → panel ayarları kontrol listesi.
-
-`20260911120000_browse_before_signin.sql` **uygulandı** (2026-09-11).
-
-> ⚠️ `03_production_reset.sql` artık **çalıştırılmamalı**. Section 3'ün anonim
-> kullanıcı silme sorgusu bundan sonra gerçek müşterileri siler.
-
-### Karara bağlananlar
-| Konu | Karar |
+| Dosya | Ne |
 |---|---|
-| Personel hesabı | `admin@minerva.com.tr` — gerçek ve tek admin hesabı |
-| Personel dağıtımı | Android sideload APK + iOS TestFlight, testi Berk yapacak |
-| **iOS testi** | **20 Eylül 2026'dan sonra**, Mac mini üzerinde |
-| Canlı test | Dağıtımdan sonra gerçek kullanıcılarla |
+| `supabase/migrations/20260921120000_schema.sql` | Tüm şema — 7 tablo, 3 enum, 5 kural trigger'ı, tüm RLS |
+| `supabase/migrations/20260921120100_catalogue.sql` | Hizmet kataloğu, fiyat listesinden (7 ana + 8 ekstra) |
+| `supabase/checks/01_schema_audit.sql` | Baştan yazıldı — artık kuralların yerinde olduğunu da doğruluyor |
+| `supabase/checks/02_data_audit.sql` | Baştan yazıldı |
+| `supabase/checks/04_faz2_reset.sql` | Eski şemayı düşürme (yıkıcı, `03`'ün yerine) |
 
-### Sonraya bırakılanlar (bilinçli)
-- **Android upload keystore** — AAB/APK yükleme anında oluşturulacak. O zamana
-  kadar release APK'lar **debug anahtarıyla** imzalanıyor: sideload testi için
-  sorunsuz, Play Store yüklemesi için reddedilir
-- **iOS admin flavor'ı yok** — `ios/` altında tek `Runner` scheme'i ve tek bundle
-  id (`com.oberk.minerva`) var. `flutter build ios --flavor admin` çalışmaz ve
-  TestFlight'ta personel uygulaması için ayrı kayıt açılamaz. 20 Eylül sonrası
-  Mac mini oturumunda Xcode'da scheme + configuration + ayrı bundle id kurulacak;
-  Apple Developer tarafında da ikinci bir App ID gerekecek
+**→ Uygulama adımları: `supabase/CANLIYA_CIKIS.md`**
 
-### 🔽 Faz 2 — yeni iş akışı
+### ⛔ Sıra kısıtı — okumadan SQL çalıştırma
 
-Yeni kullanıcı/admin iş akışı tanımlandı ve dokuz karar kilitlendi. Ayrıntılı
-analiz, hedef veri modeli ve fazlı iş planı:
+Uygulama kodu **henüz eski şemaya göre**. `lib/` altında `profiles`, `user_id` ve
+tek `service_id` kolonu kullanılıyor; üçü de kalkıyor. Yani **SQL'i çalıştırdığın
+an mevcut uygulama çalışmayı bırakır.**
 
-- **`FAZ2_ANALIZ.md`** (repo)
-- **Okunabilir sayfa:** https://claude.ai/code/artifact/e4154db4-2bd4-4e4a-a578-608a60024690
+Önerim: göçü Faz 2 (kod taşıma) bitince, ikisini birlikte canlıya almak. Gerçek
+kullanıcı olmadığı için şimdi çalıştırmanın da bir kaybı yok — karar senin.
 
-**Tasarım kesinleşti — açık soru kalmadı.** 18 kararın tamamı alındı:
+### Faz 1'de alınan tasarım kararları
+- **Kimlik:** `customers` (telefon tekil) + `customer_devices`; `profiles` kalktı
+- **Para:** `appointment_services` satırları; `total_amount` kolonu **yok**, toplam
+  türetiliyor
+- **Tamamlanma:** kolon değil, okurken türetiliyor — `pg_cron` gerekmiyor
+- **21 gün:** simetrik; `confirmed` + `completed` tüketir, `cancelled` + `no_show`
+  tüketmez (yani `no_show` işaretlemek kişinin **kilidini açar**)
+- **`created_by_admin` trigger'dan stamplanıyor**, istemciden değil — yoksa müşteri
+  kendini kuraldan muaf tutabilirdi
+- **Soft delete her tabloda**, hiçbir yerde DELETE politikası yok
+- **Yeni kural kodları:** `MN002` 21 gün · `MN003` kapalı gün · `MN004` iptal
+  sınırı · `MN005` ad/telefon eşleşmemesi
 
-- Kimlik modeli **B** — kişi kaydı `auth.users`'tan ayrılıp `customers` tablosuna
-  taşınıyor, telefon numarası kişiyi tanımlıyor, **OTP/e-posta yok**
-- Gerçek katalog: 7 ana işlem + 8 ekstra. Müşteri yalnızca ana işlemi seçer,
-  ekstraları salon sonradan girer
-- Tutar `sum(appointment_services.amount)` ile **türetiliyor** — `total_amount`
-  kolonu yok, çünkü admin'in düzenlediği şey satırların kendisi
-- "Tamamlandı" da türetiliyor (saati 1 saat geçmiş ve iptal edilmemiş) — zamanlanmış
-  iş (`pg_cron`) gerekmiyor
-- Soyad nullable, soft delete her yerde, Pazar kapalı, 21 gün simetrik pencere
+### Sıradaki — Faz 2
+Uygulama çekirdeğinin yeni şemaya taşınması: `BookingRepository` arayüzü,
+`Customer` / `SalonService` / `Closure` modelleri, telefonla eşleşme akışı, dört
+yeni SQLSTATE'in `translateError` eşlemesi ve l10n metinleri.
 
-**İki varsayım** işaretli: V1 `no_show` pencereye sayılır, V2 Pazar'a admin randevu
-girebilir. İkisi de tek satırlık SQL ile geri alınabilir.
-
-⚠️ **Sıra kısıtı:** veritabanı şu an boş, bu yüzden şema göçü bugün bedava.
-Gerçek müşteriler girmeden **önce** yapılmalı — sonrasında aynı iş veri taşıma
-işine dönüşür.
+### Bekleyen diğer işler
+- **Duman testi** — Berk'in onayı olmadan yapılmayacak
+- **Telefon testi** — her şey bittikten sonra, en son
+- **Android upload keystore** — yükleme anında
+- **iOS admin flavor'ı yok** — tek `Runner` scheme'i, tek bundle id. Mac mini
+  oturumunda Xcode'da scheme + ayrı bundle id, Apple Developer'da ikinci App ID
+- **Supabase ücretli plan** — telefon testiyle birlikte karara bağlanacak

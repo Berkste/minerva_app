@@ -1,143 +1,203 @@
 -- Minerva Nail Art — data audit.
 --
--- Read-only. Run this after `01_schema_audit.sql` comes back clean. It answers
--- the other half of "is this project fit to go live": what is actually stored
--- in it, whether the invariants have held so far, and how much of the content
--- is development leftovers.
+-- Read-only. Run the sections one at a time and read each result; unlike the
+-- schema audit this one is meant to be looked at, not scanned for the word
+-- FAIL. Nothing here writes anything.
 --
--- Run each section on its own — the SQL editor shows the last statement's
--- result, so running the whole file at once only displays section 8.
+-- Where `01_schema_audit.sql` asks "is the schema what the app expects", this
+-- asks "is what is actually stored consistent with the rules". A rule can be
+-- in force from today and still have rows from before it that break it.
 
--- ---------------------------------------------------------------------------
--- 1. Has the uniqueness guarantee actually held?
--- ---------------------------------------------------------------------------
--- The one query that matters most. Every row returned is a slot the salon
--- double-booked, and would mean the index has not been doing its job.
--- Expected: no rows.
+-- ===========================================================================
+-- 1. The one that must come back empty
+-- ===========================================================================
+-- Two live appointments in the same slot. The partial unique index makes this
+-- impossible, so a row here means the index is missing or was dropped — the
+-- single worst thing that can happen to this database.
 
-select slot_date, slot_hour, count(*) as confirmed_bookings,
+select slot_date, slot_hour, count(*) as clashes,
        string_agg(id::text, ', ') as appointment_ids
 from public.appointments
-where status = 'confirmed'
+where status in ('confirmed', 'completed') and deleted_at is null
 group by slot_date, slot_hour
 having count(*) > 1
 order by slot_date, slot_hour;
 
--- ---------------------------------------------------------------------------
--- 2. Shape of the stored data
--- ---------------------------------------------------------------------------
+
+-- ===========================================================================
+-- 2. Shape of the data
+-- ===========================================================================
 
 select
-  (select count(*) from public.appointments)                                as appointments_total,
-  (select count(*) from public.appointments where status = 'confirmed')     as confirmed,
-  (select count(*) from public.appointments where status = 'cancelled')     as cancelled,
+  (select count(*) from public.customers where deleted_at is null)            as customers,
+  (select count(*) from public.customers where deleted_at is not null)        as customers_archived,
+  (select count(*) from public.customer_devices)                              as linked_devices,
+  (select count(*) from public.appointments where deleted_at is null)         as appointments,
   (select count(*) from public.appointments
-     where status = 'confirmed' and slot_date >= current_date)              as confirmed_upcoming,
-  (select count(*) from public.profiles)                                    as profiles,
-  (select count(*) from public.admins)                                      as admins,
-  (select count(*) from auth.users)                                         as auth_users,
-  (select min(created_at) from public.appointments)                         as first_booking,
-  (select max(created_at) from public.appointments)                         as last_booking;
+    where status = 'confirmed' and deleted_at is null
+      and slot_date >= current_date)                                          as upcoming,
+  (select count(*) from public.appointments where status = 'cancelled')       as cancelled,
+  (select count(*) from public.appointments where status = 'no_show')         as no_shows,
+  (select count(*) from public.services where deleted_at is null)             as services,
+  (select count(*) from public.salon_closures where deleted_at is null)       as closures,
+  (select count(*) from public.admins)                                        as staff,
+  (select count(*) from auth.users)                                           as auth_users;
 
--- ---------------------------------------------------------------------------
--- 3. Who is in auth.users — anonymous customers vs staff logins
--- ---------------------------------------------------------------------------
--- Anonymous users are devices that opened the customer app. In a development
--- project most of them are yours and the concurrency probe's; in a live one
--- they are real customers. This is the line the cleanup in 03 deletes along.
---
--- If `auth.users.is_anonymous` does not exist on this instance (older auth
--- versions), use this instead — an anonymous user has no identity row:
---
---   select case when i.user_id is null then 'anonymous (customer device)'
---               else 'has an identity (staff)' end as kind, count(*)
---   from auth.users u
---   left join (select distinct user_id from auth.identities) i on i.user_id = u.id
---   group by 1;
+
+-- ===========================================================================
+-- 3. The 21-day rule, checked against what is stored
+-- ===========================================================================
+-- The trigger enforces this going forward and exempts staff-created bookings.
+-- This finds customers who nonetheless hold two live appointments closer than
+-- 21 days — which is legitimate when the salon put one of them in, and worth a
+-- look when it did not.
+
+select c.phone,
+       c.first_name,
+       a.slot_date    as first_date,
+       b.slot_date    as second_date,
+       (b.slot_date - a.slot_date) as days_apart,
+       a.created_by_admin as first_by_admin,
+       b.created_by_admin as second_by_admin
+from public.appointments a
+join public.appointments b
+  on b.customer_id = a.customer_id
+ and b.id <> a.id
+ and b.slot_date > a.slot_date
+ and (b.slot_date - a.slot_date) < 21
+join public.customers c on c.id = a.customer_id
+where a.status in ('confirmed', 'completed') and a.deleted_at is null
+  and b.status in ('confirmed', 'completed') and b.deleted_at is null
+order by days_apart, c.phone;
+
+
+-- ===========================================================================
+-- 4. Bookings on days the salon is shut
+-- ===========================================================================
+-- Sundays and declared closures. Staff bookings are allowed here by design, so
+-- the created_by_admin column is the thing to read.
+
+select a.slot_date,
+       to_char(a.slot_date, 'Day')          as weekday,
+       a.slot_hour,
+       a.created_by_admin,
+       case when extract(isodow from a.slot_date) = 7 then 'Sunday'
+            else 'declared closure' end     as reason
+from public.appointments a
+where a.status in ('confirmed', 'completed') and a.deleted_at is null
+  and (
+    extract(isodow from a.slot_date) = 7
+    or exists (
+      select 1 from public.salon_closures c
+      where c.deleted_at is null and a.slot_date between c.start_date and c.end_date
+    )
+  )
+order by a.slot_date;
+
+
+-- ===========================================================================
+-- 5. Identity consistency
+-- ===========================================================================
+-- Customers nobody can reach (no device ever linked), devices pointing at an
+-- archived person, and appointments whose contact snapshot has drifted from
+-- the customer record. None of these are errors on their own — a customer the
+-- salon created by hand has no device until that person installs the app.
+
+select 'customer with no linked device'            as finding,
+       count(*)                                    as rows
+from public.customers c
+where c.deleted_at is null
+  and not exists (select 1 from public.customer_devices d where d.customer_id = c.id)
+
+union all
+select 'device pointing at an archived customer',
+       count(*)
+from public.customer_devices d
+join public.customers c on c.id = d.customer_id
+where c.deleted_at is not null
+
+union all
+select 'appointment phone differs from customer phone',
+       count(*)
+from public.appointments a
+join public.customers c on c.id = a.customer_id
+where a.phone is distinct from c.phone and a.deleted_at is null;
+
+
+-- ===========================================================================
+-- 6. Field-level invariants
+-- ===========================================================================
+-- Everything the CHECK constraints already guarantee, verified rather than
+-- assumed. All zeros is the expected answer.
 
 select
-  case
-    when coalesce(u.is_anonymous, false) then 'anonymous (customer device)'
-    when u.email is not null              then 'email login (staff)'
-    else 'other'
-  end                                                as kind,
-  count(*)                                           as users,
-  min(u.created_at)                                  as first_seen,
-  max(u.created_at)                                  as last_seen,
-  count(*) filter (where a.user_id is not null)      as users_with_bookings
-from auth.users u
-left join lateral (
-  select 1 as user_id from public.appointments ap where ap.user_id = u.id limit 1
-) a on true
-group by 1
-order by 2 desc;
+  (select count(*) from public.customers
+    where phone !~ '^[1-9][0-9]{9}$')                                          as bad_customer_phone,
+  (select count(*) from public.appointments
+    where phone !~ '^[1-9][0-9]{9}$')                                          as bad_appointment_phone,
+  (select count(*) from public.appointments
+    where slot_hour not in (10, 12, 14, 16, 18, 20))                           as bad_hour,
+  (select count(*) from public.appointments
+    where status = 'cancelled' and (cancelled_at is null or cancelled_by is null)) as cancelled_without_who_or_when,
+  (select count(*) from public.appointments
+    where status <> 'cancelled' and (cancelled_at is not null or cancelled_by is not null)) as not_cancelled_but_marked,
+  (select count(*) from public.appointment_services s
+    where s.deleted_at is null
+      and not exists (select 1 from public.services sv where sv.id = s.service_id)) as orphan_line_items;
 
--- ---------------------------------------------------------------------------
--- 4. The staff roster — every row here reads every customer's phone number
--- ---------------------------------------------------------------------------
--- Check this line by line before going live. A leftover development admin is
--- a standing privacy hole, not an untidiness.
 
-select ad.id,
-       u.email,
-       u.email_confirmed_at is not null as email_confirmed,
-       u.last_sign_in_at,
-       ad.created_at as admin_since
+-- ===========================================================================
+-- 7. The catalogue
+-- ===========================================================================
+-- What the salon is currently offering, and what each appointment is worth.
+-- Revenue is the sum of the line items, never derived from the catalogue —
+-- two extras are priced as a range, so only the recorded figure is true.
+
+select kind,
+       count(*)                                      as services,
+       min(price_min)                                as cheapest,
+       max(coalesce(price_max, price_min))           as dearest,
+       count(*) filter (where price_max is not null) as ranged
+from public.services
+where deleted_at is null
+group by kind
+order by kind;
+
+-- Appointments with money on them, most recent first.
+
+select a.slot_date,
+       a.slot_hour,
+       a.status,
+       count(s.id)                          as line_items,
+       coalesce(sum(s.amount), 0)           as total
+from public.appointments a
+left join public.appointment_services s
+  on s.appointment_id = a.id and s.deleted_at is null
+where a.deleted_at is null
+group by a.id, a.slot_date, a.slot_hour, a.status
+order by a.slot_date desc, a.slot_hour desc
+limit 50;
+
+
+-- ===========================================================================
+-- 8. Who can reach everything
+-- ===========================================================================
+-- Membership of `admins` is the whole of staff authorization: each row can
+-- read every customer's name and phone number and change any booking.
+
+select ad.id, u.email, u.last_sign_in_at, ad.created_at as admin_since
 from public.admins ad
 left join auth.users u on u.id = ad.id
 order by ad.created_at;
 
--- ---------------------------------------------------------------------------
--- 5. Bookings that look like development leftovers
--- ---------------------------------------------------------------------------
--- The concurrency probe books one slot from many users at once, so its traces
--- are bursts of same-second inserts. Real customers do not arrive that way.
 
-select date_trunc('second', created_at) as inserted_at,
-       count(*)                         as rows_in_that_second,
-       count(distinct user_id)          as distinct_users,
-       string_agg(distinct status::text, ', ') as statuses
-from public.appointments
-group by 1
-having count(*) > 1
-order by 2 desc, 1 desc
-limit 50;
+-- ===========================================================================
+-- 9. Size
+-- ===========================================================================
 
--- ---------------------------------------------------------------------------
--- 6. Rows the app can no longer reach
--- ---------------------------------------------------------------------------
--- Bookings whose owner has no profile: a device that booked before the profile
--- write, or one whose user was removed. Not an error, but worth seeing.
-
-select count(*) filter (where p.id is null) as bookings_without_profile,
-       count(*) filter (where ap.slot_date < current_date
-                          and ap.status = 'confirmed') as past_confirmed_bookings,
-       count(*) as total
-from public.appointments ap
-left join public.profiles p on p.id = ap.user_id;
-
--- ---------------------------------------------------------------------------
--- 7. Do the stored values still satisfy the app's rules?
--- ---------------------------------------------------------------------------
--- The constraints enforce these on write, so rows can only violate them if a
--- constraint was added after the data, or dropped and re-added. Expected: 0.
-
-select
-  count(*) filter (where phone !~ '^[1-9][0-9]{9}$')                    as bad_phone,
-  count(*) filter (where slot_hour not in (10, 12, 14, 16, 18, 20))     as bad_hour,
-  count(*) filter (where service_id is not null and service_id not in (
-    'classic_manicure', 'gel_manicure', 'nail_art_design', 'pedicure'))  as unknown_service,
-  count(*) filter (where status = 'cancelled' and cancelled_at is null)  as cancelled_without_timestamp,
-  count(*) filter (where status = 'confirmed' and cancelled_at is not null) as confirmed_with_timestamp
-from public.appointments;
-
--- ---------------------------------------------------------------------------
--- 8. Storage and load, so the plan can be judged
--- ---------------------------------------------------------------------------
-
-select relname                                        as table_name,
-       n_live_tup                                     as approx_rows,
-       pg_size_pretty(pg_total_relation_size(relid))  as total_size
+select relname as table_name,
+       n_live_tup as approx_rows,
+       pg_size_pretty(pg_total_relation_size(relid)) as total_size
 from pg_stat_user_tables
 where schemaname = 'public'
 order by pg_total_relation_size(relid) desc;

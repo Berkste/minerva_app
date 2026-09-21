@@ -91,7 +91,9 @@ Bottom navigation: **Home · Appointments · Profile**.
 ## Backend
 
 Supabase. Schema and policies live in
-`supabase/migrations/20260827120000_init.sql` — run it once in the SQL editor.
+`supabase/migrations/20260921120000_schema.sql`, with the service catalogue in
+`20260921120100_catalogue.sql` — run them once, in that order, in the SQL
+editor. `supabase/checks/01_schema_audit.sql` then verifies the result.
 
 ### One booking per slot
 
