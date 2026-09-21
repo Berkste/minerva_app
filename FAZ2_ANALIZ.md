@@ -1,10 +1,9 @@
 # Faz 2 — Kesinleşmiş tasarım ve iş planı
 
-**Tarih:** 2026-09-11 (revizyon 3 — final) · **Durum:** tüm kararlar alındı, uygulanabilir
+**Tarih:** 2026-09-21 (revizyon 4) · **Durum:** tüm kararlar alındı, Faz 1 uygulanabilir
 **Okunabilir sürüm:** https://claude.ai/code/artifact/e4154db4-2bd4-4e4a-a578-608a60024690
 
-Açık soru kalmadı. İki küçük varsayım §7'de işaretli; ikisi de tek satırlık SQL ile
-geri alınabilir.
+Açık soru kalmadı. §7'deki iki varsayım da cevaplandı — biri düzeltildi.
 
 ---
 
@@ -26,9 +25,9 @@ geri alınabilir.
 | Y3 | Ekstralar | Müşteri yalnızca **ana işlemi** seçer; ekstraları salon sonradan girer |
 | Y4 | Tutar | Randevu oluşurken seçilen işlemlerin fiyatlarından **toplanır**. Admin sonradan satır ekleyip silebilir |
 | Y5 | Tamamlanma | Randevu saatini **1 saat** geçtiyse ve iptal edilmediyse tamamlanmış sayılır. Admin elle de işaretleyebilir |
-| Y6 | Gelmeyen | → **V1** varsayımı |
-| Y7 | Pazar istisnası | Müşteri kesinlikle alamaz → admin için **V2** varsayımı |
-| Y8 | İngilizce | Zorunlu değil; en iyi çeviriler §6'da onayına sunuldu |
+| Y6 | Gelmeyen | `no_show` pencereyi **tüketmez** — kilidi açar (§7) |
+| Y7 | Pazar istisnası | Müşteri alamaz, **admin alabilir** — onaylandı |
+| Y8 | İngilizce | Çeviriler onaylandı — §6 |
 | Y9 | Çıkarma ücreti | İstisna yok — Tırnak Çıkarma tek fiyat, 350 TL |
 
 ---
@@ -183,8 +182,8 @@ da gelmeyen için `no_show` seçebilir. İkisi de aynı enum üzerinden; arka pl
 ### 21 günlük pencerenin tam tanımı
 
 Bir kişi için `D` tarihine randevu oluşturulurken ya da güncellenirken: aynı kişinin
-**aktif** (silinmemiş, iptal edilmemiş) başka bir randevusu `D`'ye 21 günden yakınsa
-reddedilir. Kural simetrik — sonraya da öncesine de aynı mesafe.
+durumu `confirmed` veya `completed` olan (silinmemiş) başka bir randevusu `D`'ye 21
+günden yakınsa reddedilir. `cancelled` ve `no_show` sayılmaz — §7. Kural simetrik.
 
 Randevunun kendisi kontrole dahil edilmez, yoksa kişi kendi randevusunu erteleyemez.
 `created_by` admin ise kural hiç çalışmaz (S3).
@@ -214,13 +213,13 @@ yani `services.name_en` kolonunda duracak — sonradan düzeltmek tek bir `updat
 | Türkçe | İngilizce | |
 |---|---|---|
 | Protez Tırnak | Nail Extensions | |
-| Protez Tırnak Bakım | Extension Refill | ⚠️ "bakım" burada dolgu/yenileme mi? |
+| Protez Tırnak Bakım | Artificial Nail Care | ✅ onaylandı |
 | Düz Kalıcı Oje | Classic Gel Polish | |
-| Jel Destekli Kalıcı Oje | Builder Gel Polish | ⚠️ teyit |
+| Jel Destekli Kalıcı Oje | Gel-Based Permanent Nail Polish | ✅ onaylandı |
 | Ayak Kalıcı Oje | Toenail Gel Polish | |
 | Medikal Manikür | Medical Manicure | |
 | Medikal Pedikür | Medical Pedicure | |
-| Şablon Sistem Protez | Form-System Extensions | ⚠️ teyit |
+| Şablon Sistem Protez | Template System Artificial Nails | ✅ onaylandı |
 | Nail Art | Nail Art | |
 | Cat Eye | Cat Eye | |
 | French / Ombre | French / Ombré | |
@@ -229,25 +228,51 @@ yani `services.name_en` kolonunda duracak — sonradan düzeltmek tek bir `updat
 | Tek Tırnak Protez | Single Nail Extension | |
 | Tırnak Çıkarma | Nail Removal | |
 
-İşaretli üçü tırnak terminolojisi; doğrusunu sen söylersen düzeltirim. Kalanı için
-bir şey yapmana gerek yok.
+Üçü de 2026-09-21'de onaylandı. Liste tamam.
 
 ---
 
-## 7. Varsayımlar
+## 7. Pencereyi hangi randevular tüketir — 2026-09-21'de netleşti
 
-İkisi de cevapsız kalan noktalar. Tek satırlık SQL ile geri alınabilir; yanlışsa
-söylemen yeterli.
+**V1 varsayımı yanlıştı ve düzeltildi.** `no_show` pencereyi **tüketmez**.
 
-**V1 — `no_show` 21 günlük pencereye sayılır.**
-Gelmeyen kişi slotu harcadı; saymamak, gelmemeyi kuralı sıfırlamanın yolu hâline
-getirir. Ters karar verirsen trigger'daki durum listesinden `no_show` çıkarılır.
+Kural şu: pencereyi yalnızca *gerçekleşmiş sayılan* randevular tüketir.
 
-**V2 — Pazar müşteriye kapalı, admin için açık.**
-"Pazar kesinlikle uygulamadan randevu alınamaz" dedin; bunu müşteri uygulaması olarak
-okudum. Admin diğer bütün kurallardan muaf olduğu için tutarlı olan bu — salon
-isterse bir Pazar bir müdavimini alabilir. Admin'in de kesinlikle alamaması
-gerekiyorsa trigger'daki muafiyet kaldırılır.
+| Durum | Pencereyi tüketir mi? | Neden |
+|---|---|---|
+| `confirmed` | **Evet** | Yer ayrılmış durumda |
+| `completed` | **Evet** | Kişi geldi, hizmet aldı |
+| `cancelled` | Hayır | Yer serbest kaldı |
+| `no_show` | **Hayır** | Kişi gelmedi, hizmet almadı |
+| soft-deleted | Hayır | Yok sayılır |
+
+Örnek — senin verdiğin: kişi 1 Eylül'e randevu aldı.
+- **Geldiyse** (veya kimse bir şey işaretlemediyse, ki o zaman sistem gerçekleşmiş
+  sayar) → en erken **22 Eylül**.
+- **Gelmediyse** ve admin 1 Eylül geçtikten sonra randevuyu `no_show` ya da
+  `cancelled` işaretlediyse → kişi hemen yeni randevu alabilir, 2 veya 3 Eylül dahil.
+
+**Operasyonel sonuç:** admin'in bir randevuyu `no_show` işaretlemesi, o kişinin
+kilidini **açar**. Yani bu işaretleme yalnızca bir istatistik etiketi değil, kural
+sonucu olan bir eylem — admin ekranında bunun böyle olduğu yazmalı.
+
+**V2 onaylandı.** Pazar müşteriye kapalı, admin'e açık. `MN003` trigger'ı admin için
+muaf çalışacak.
+
+### Açıkta kalan tek ayrıntı — pencerenin yönü
+
+Tarifinde kural ileri yönlü: *"randevu aldıysa ondan sonraki 21 gün boyunca bir daha
+alamaz."* Spesifikasyonda **simetrik** yazdım — yani iki aktif randevu birbirine 21
+günden yakın olamaz.
+
+Fark şurada ortaya çıkıyor: kişi bugün 1 Ekim'e randevu alsın. Sonra 25 Eylül'e de
+almak istesin. İleri yönlü okumada bu geçer (25 Eylül, 1 Ekim'den *sonra* değil);
+simetrik okumada engellenir, çünkü aradaki mesafe 6 gün.
+
+Simetrik olanı önerdim — kuralın amacı "üç haftada bir gelme" ise, sıranın önemi yok.
+Ters düşünüyorsan Faz 1'de tek satır değişir.
+
+---
 
 ---
 
