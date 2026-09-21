@@ -421,54 +421,55 @@ uygulamaya girmiş mi.
 
 ## 11. 🔖 Son kalınan nokta — 2026-09-21
 
-**Tam olarak burada durduk.** Devam ederken önce bu bölümü oku.
+**Faz 1 + Faz 2 tamamlandı. Sırada SQL'in çalıştırılması var.**
 
-### Faz 1 yazıldı, uygulanmayı bekliyor
-
-Faz 2 tasarımının veritabanı tarafı hazır. Şema **konsolide edildi** (b yolu):
-üç eski migration dosyası kaldırıldı, yerine iki yeni dosya geldi.
+### Faz 1 — şema (yazıldı, uygulanmayı bekliyor)
 
 | Dosya | Ne |
 |---|---|
-| `supabase/migrations/20260921120000_schema.sql` | Tüm şema — 7 tablo, 3 enum, 5 kural trigger'ı, tüm RLS |
-| `supabase/migrations/20260921120100_catalogue.sql` | Hizmet kataloğu, fiyat listesinden (7 ana + 8 ekstra) |
-| `supabase/checks/01_schema_audit.sql` | Baştan yazıldı — artık kuralların yerinde olduğunu da doğruluyor |
+| `supabase/migrations/20260921120000_schema.sql` | 7 tablo, 3 enum, 5 trigger, 7 fonksiyon, tüm RLS |
+| `supabase/migrations/20260921120100_catalogue.sql` | Katalog (7 ana + 8 ekstra), fiyat listesinden |
+| `supabase/checks/01_schema_audit.sql` | Baştan yazıldı — kuralların yerinde olduğunu da doğruluyor |
 | `supabase/checks/02_data_audit.sql` | Baştan yazıldı |
-| `supabase/checks/04_faz2_reset.sql` | Eski şemayı düşürme (yıkıcı, `03`'ün yerine) |
+| `supabase/checks/04_faz2_reset.sql` | Eski şemayı düşürme (yıkıcı) |
 
-**→ Uygulama adımları: `supabase/CANLIYA_CIKIS.md`**
+Eski üç migration dosyası ve `03_production_reset.sql` kaldırıldı (git geçmişinde).
 
-### ⛔ Sıra kısıtı — okumadan SQL çalıştırma
+### Faz 2 — uygulama çekirdeği (bitti)
 
-Uygulama kodu **henüz eski şemaya göre**. `lib/` altında `profiles`, `user_id` ve
-tek `service_id` kolonu kullanılıyor; üçü de kalkıyor. Yani **SQL'i çalıştırdığın
-an mevcut uygulama çalışmayı bırakır.**
+- `Customer`, `SalonClosure`, yeniden yazılmış `SalonService` ve `Appointment`;
+  `Profile` kaldırıldı
+- `BookingRepository` arayüzü baştan yazıldı; Supabase implementasyonu yeni RPC'leri
+  kullanıyor (`book_appointment`, `claim_customer`, `set_appointment_service`,
+  `closed_days`)
+- Dört yeni kural kodu (`MN002`–`MN005`) `translateError`'da eşlendi, kendi
+  `BookingException` sınıfları ve tr/en metinleri var
+- `CatalogueProvider` — hizmetler artık veritabanından geliyor, sabit liste yok
+- `FakeBookingRepository` beş kuralı da taklit ediyor, testler bunun üzerinden
+- **250/250 test geçiyor**, `flutter analyze` temiz
 
-Önerim: göçü Faz 2 (kod taşıma) bitince, ikisini birlikte canlıya almak. Gerçek
-kullanıcı olmadığı için şimdi çalıştırmanın da bir kaybı yok — karar senin.
+### 🔴 SENİN SIRAN — SQL'i çalıştır
 
-### Faz 1'de alınan tasarım kararları
-- **Kimlik:** `customers` (telefon tekil) + `customer_devices`; `profiles` kalktı
-- **Para:** `appointment_services` satırları; `total_amount` kolonu **yok**, toplam
-  türetiliyor
-- **Tamamlanma:** kolon değil, okurken türetiliyor — `pg_cron` gerekmiyor
-- **21 gün:** simetrik; `confirmed` + `completed` tüketir, `cancelled` + `no_show`
-  tüketmez (yani `no_show` işaretlemek kişinin **kilidini açar**)
-- **`created_by_admin` trigger'dan stamplanıyor**, istemciden değil — yoksa müşteri
-  kendini kuraldan muaf tutabilirdi
-- **Soft delete her tabloda**, hiçbir yerde DELETE politikası yok
-- **Yeni kural kodları:** `MN002` 21 gün · `MN003` kapalı gün · `MN004` iptal
-  sınırı · `MN005` ad/telefon eşleşmemesi
+**→ `supabase/CANLIYA_CIKIS.md`**
 
-### Sıradaki — Faz 2
-Uygulama çekirdeğinin yeni şemaya taşınması: `BookingRepository` arayüzü,
-`Customer` / `SalonService` / `Closure` modelleri, telefonla eşleşme akışı, dört
-yeni SQLSTATE'in `translateError` eşlemesi ve l10n metinleri.
+Uygulama kodu artık yeni şemayı bekliyor; SQL çalıştırılmadan canlı veritabanına
+bağlanamaz. Adımlar: boşluk kontrolü → `04_faz2_reset.sql` Section 1 → iki migration
+→ admin satırını geri ekle → `01_schema_audit.sql` (sıfır FAIL) → `02_data_audit.sql`.
 
-### Bekleyen diğer işler
+### Sırada — Faz 3 ve 4 (ekranlar)
+
+Faz 2 çekirdeği bitirdi; kalan iş arayüz:
+- **Faz 3 müşteri:** takvimde dolu/boş + kapalı gün gösterimi, profil düzenleme
+  ekranı, randevu değiştirme akışı, akış sırası düzeltmesi (işlem → ad/soyad)
+- **Faz 4 admin:** randevu oluşturma, işlem listesi düzenleme, `completed`/`no_show`
+  işaretleme, kişi listesi, hizmet/fiyat yönetimi, takvim kapatma, istatistik sayfası
+
+Repository ve provider katmanı bu işlerin hepsini zaten destekliyor — eksik olan
+yalnızca ekranlar.
+
+### Sonraya bırakılanlar
 - **Duman testi** — Berk'in onayı olmadan yapılmayacak
-- **Telefon testi** — her şey bittikten sonra, en son
+- **Telefon testi** — her şey bittikten sonra
 - **Android upload keystore** — yükleme anında
-- **iOS admin flavor'ı yok** — tek `Runner` scheme'i, tek bundle id. Mac mini
-  oturumunda Xcode'da scheme + ayrı bundle id, Apple Developer'da ikinci App ID
-- **Supabase ücretli plan** — telefon testiyle birlikte karara bağlanacak
+- **iOS admin flavor'ı yok** — Mac mini oturumunda Xcode'da kurulacak
+- **Supabase ücretli plan** — telefon testiyle birlikte

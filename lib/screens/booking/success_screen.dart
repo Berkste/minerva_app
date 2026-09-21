@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../models/appointment.dart';
@@ -8,6 +9,7 @@ import '../../models/salon_service.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/formatting.dart';
 import '../../widgets/gradient_button.dart';
+import '../../providers/catalogue_provider.dart';
 
 /// Confirmation screen shown once the booking has been written to storage.
 class SuccessScreen extends StatefulWidget {
@@ -78,7 +80,9 @@ class _SuccessScreenState extends State<SuccessScreen>
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final appointment = widget.appointment;
-    final service = SalonService.byId(appointment.serviceId);
+    final service = context
+        .watch<CatalogueProvider>()
+        .byId(appointment.mainService?.serviceId);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 28),
@@ -122,7 +126,7 @@ class _SuccessScreenState extends State<SuccessScreen>
                 if (service != null) ...[
                   const SizedBox(height: 4),
                   Text(
-                    service.name(l10n),
+                    service.localisedName(context),
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: AppColors.textSecondary,

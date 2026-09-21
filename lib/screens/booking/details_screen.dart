@@ -47,20 +47,20 @@ class _DetailsScreenState extends State<DetailsScreen> {
     super.didChangeDependencies();
 
     // A returning customer should not retype what the salon already knows.
-    // This runs again when the profile finishes loading, so the prefill still
+    // This runs again when the record finishes loading, so the prefill still
     // happens if the customer got here before the first fetch came back.
-    final profile = Provider.of<AppointmentProvider>(context).profile;
-    if (profile == null) return;
+    final customer = Provider.of<AppointmentProvider>(context).customer;
+    if (customer == null) return;
 
     // Straight into the controllers: they are what the form reads, and the
     // booking draft is updated from them on Continue. Writing to the provider
     // here would notify listeners mid-build.
     // Only fill what the customer has not already typed over.
-    if (_firstName.text.isEmpty) _firstName.text = profile.firstName;
-    if (_lastName.text.isEmpty) _lastName.text = profile.lastName;
+    if (_firstName.text.isEmpty) _firstName.text = customer.firstName;
+    if (_lastName.text.isEmpty) _lastName.text = customer.lastName ?? '';
     if (_phone.text.isEmpty) {
       _phone.text = TurkishPhoneInputFormatter.format(
-        TurkishPhoneInputFormatter.extractDigits(profile.phone),
+        TurkishPhoneInputFormatter.extractDigits(customer.phone),
       );
     }
   }

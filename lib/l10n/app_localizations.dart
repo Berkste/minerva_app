@@ -662,6 +662,36 @@ abstract class AppLocalizations {
   /// **'Bu saat geçti. Lütfen ileri bir tarih seçin.'**
   String get slotInThePast;
 
+  /// No description provided for @bookingWindow.
+  ///
+  /// In tr, this message translates to:
+  /// **'Üç haftada bir randevu alabilirsiniz. Mevcut randevunuz duruyor.'**
+  String get bookingWindow;
+
+  /// No description provided for @bookingWindowUntil.
+  ///
+  /// In tr, this message translates to:
+  /// **'Üç haftada bir randevu alabilirsiniz. En erken {date} tarihine randevu alabilirsiniz.'**
+  String bookingWindowUntil(String date);
+
+  /// No description provided for @salonClosedThatDay.
+  ///
+  /// In tr, this message translates to:
+  /// **'Salon o gün kapalı. Lütfen başka bir gün seçin.'**
+  String get salonClosedThatDay;
+
+  /// No description provided for @cancelTooLate.
+  ///
+  /// In tr, this message translates to:
+  /// **'Randevunuza bir saatten az kaldı. İptal için lütfen salonu arayın.'**
+  String get cancelTooLate;
+
+  /// No description provided for @nameDoesNotMatch.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bu telefon numarası için girdiğiniz ad kayıtlı bilgiyle eşleşmiyor. Lütfen kontrol edin.'**
+  String get nameDoesNotMatch;
+
   /// No description provided for @connectionProblem.
   ///
   /// In tr, this message translates to:

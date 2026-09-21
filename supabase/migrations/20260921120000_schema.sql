@@ -385,6 +385,141 @@ revoke all on function public.claim_customer(text, text, text) from public, anon
 grant execute on function public.claim_customer(text, text, text) to authenticated;
 
 -- ---------------------------------------------------------------------------
+-- book_appointment(): the whole booking, in one transaction
+-- ---------------------------------------------------------------------------
+-- A booking is two rows — the appointment and the treatment chosen — and they
+-- must not be able to exist apart. Doing it from the client would mean two
+-- round trips with a window between them where a booking has no treatment and
+-- no way to acquire one, so it happens here instead.
+--
+-- It also claims the customer, which is the same "find them or create them"
+-- the profile screen does. That makes the whole of booking a single call:
+-- identity, appointment and treatment together, or none of it.
+--
+-- Definer rights, so it can reach customers and appointment_services without
+-- those tables needing client-facing write policies. It does not bypass the
+-- rules: every trigger on appointments still fires, so MN001-MN004 apply
+-- exactly as they would to a direct insert.
+
+create or replace function public.book_appointment(
+  p_first_name text,
+  p_last_name  text,
+  p_phone      text,
+  p_slot_date  date,
+  p_slot_hour  smallint,
+  p_service_id text default null
+)
+returns public.appointments
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_customer_id uuid;
+  v_appointment public.appointments%rowtype;
+  v_service     public.services%rowtype;
+begin
+  v_customer_id := public.claim_customer(p_first_name, p_last_name, p_phone);
+
+  insert into public.appointments
+    (customer_id, slot_date, slot_hour, first_name, last_name, phone)
+  values
+    (v_customer_id, p_slot_date, p_slot_hour,
+     trim(p_first_name), nullif(trim(coalesce(p_last_name, '')), ''), p_phone)
+  returning * into v_appointment;
+
+  if p_service_id is not null then
+    select * into v_service
+    from public.services
+    where id = p_service_id and kind = 'main'
+      and is_active and deleted_at is null;
+
+    if not found then
+      raise exception 'No such treatment: %', p_service_id
+        using errcode = 'MN006';
+    end if;
+
+    insert into public.appointment_services
+      (appointment_id, service_id, kind, amount)
+    values
+      (v_appointment.id, v_service.id, 'main', v_service.price_min);
+  end if;
+
+  return v_appointment;
+end;
+$$;
+
+revoke all on function public.book_appointment(text, text, text, date, smallint, text) from public, anon;
+grant execute on function public.book_appointment(text, text, text, date, smallint, text) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- set_appointment_service(): change the treatment on an existing booking
+-- ---------------------------------------------------------------------------
+-- Swapping a treatment means retiring one line and adding another, which is
+-- two writes for what the customer experiences as one choice. Same reasoning
+-- as above; same guarantee.
+--
+-- Only the treatment. Add-ons are the salon's to record, and staff edit them
+-- through the table directly.
+
+create or replace function public.set_appointment_service(
+  p_appointment_id uuid,
+  p_service_id     text
+)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_appointment public.appointments%rowtype;
+  v_service     public.services%rowtype;
+begin
+  select * into v_appointment
+  from public.appointments
+  where id = p_appointment_id and deleted_at is null;
+
+  if not found then
+    raise exception 'No such appointment' using errcode = 'MN006';
+  end if;
+
+  -- Staff may change any booking; a customer only their own, and never one the
+  -- salon entered on their behalf. Same rule as the update policy.
+  if not coalesce(public.is_admin(), false) then
+    if v_appointment.customer_id is distinct from public.current_customer_id()
+       or v_appointment.created_by_admin then
+      raise exception 'No such appointment' using errcode = 'MN006';
+    end if;
+  end if;
+
+  update public.appointment_services
+    set deleted_at = now()
+    where appointment_id = p_appointment_id
+      and kind = 'main'
+      and deleted_at is null;
+
+  if p_service_id is not null then
+    select * into v_service
+    from public.services
+    where id = p_service_id and kind = 'main'
+      and is_active and deleted_at is null;
+
+    if not found then
+      raise exception 'No such treatment: %', p_service_id
+        using errcode = 'MN006';
+    end if;
+
+    insert into public.appointment_services
+      (appointment_id, service_id, kind, amount)
+    values (p_appointment_id, v_service.id, 'main', v_service.price_min);
+  end if;
+end;
+$$;
+
+revoke all on function public.set_appointment_service(uuid, text) from public, anon;
+grant execute on function public.set_appointment_service(uuid, text) to authenticated;
+
+-- ---------------------------------------------------------------------------
 -- booked_slots(): which slots are taken, without saying by whom
 -- ---------------------------------------------------------------------------
 -- The grid has to work before the customer has any identity at all, so this is
@@ -470,6 +605,9 @@ $$;
 --   MN003  the salon is closed that day
 --   MN004  too late to cancel
 --   MN005  name does not match the number (raised by claim_customer)
+--   MN006  asked for something that is not there (unknown treatment or
+--          appointment) — a client bug rather than a rule, but named so it
+--          does not masquerade as one
 
 -- ---------------------------------------------------------------------------
 -- Stamp who created the row
@@ -821,8 +959,9 @@ create policy appointments_update_admin on public.appointments
   using (public.is_admin()) with check (public.is_admin());
 
 -- --- appointment_services --------------------------------------------------
--- The customer writes one line — the treatment they picked. Everything else is
--- the salon recording what it actually did.
+-- Customers read their line items and never write them: book_appointment() and
+-- set_appointment_service() are the only paths in, so a treatment and its
+-- price always arrive together and always come from the catalogue.
 
 create policy appointment_services_select_own on public.appointment_services
   for select to authenticated
@@ -833,18 +972,12 @@ create policy appointment_services_select_own on public.appointment_services
       and a.deleted_at is null
   ));
 
-create policy appointment_services_insert_own on public.appointment_services
-  for insert to authenticated
-  with check (kind = 'main' and exists (
-    select 1 from public.appointments a
-    where a.id = appointment_id
-      and a.customer_id = public.current_customer_id()
-      and a.deleted_at is null
-      and not a.created_by_admin
-  ));
-
+-- Retired lines stay in the table but out of every read: the app never has a
+-- reason to show one, and filtering here means neither client has to remember
+-- to. What was removed is still recoverable in SQL if it is ever asked for.
 create policy appointment_services_select_admin on public.appointment_services
-  for select to authenticated using (public.is_admin());
+  for select to authenticated
+  using (public.is_admin() and deleted_at is null);
 
 create policy appointment_services_insert_admin on public.appointment_services
   for insert to authenticated with check (public.is_admin());

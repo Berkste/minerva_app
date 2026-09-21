@@ -6,6 +6,8 @@ import '../models/salon_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/formatting.dart';
 import 'common.dart';
+import 'package:provider/provider.dart';
+import '../providers/catalogue_provider.dart';
 
 /// Summary card for one booking. Shared by the home screen ("My Next
 /// Appointment") and the appointments list, so both stay identical.
@@ -32,7 +34,9 @@ class AppointmentCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final service = SalonService.byId(appointment.serviceId);
+    final service = context
+        .watch<CatalogueProvider>()
+        .byId(appointment.mainService?.serviceId);
 
     return Opacity(
       opacity: isPast ? 0.6 : 1,
@@ -84,7 +88,7 @@ class AppointmentCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          service?.name(l10n) ?? l10n.serviceNotSelectedOnCard,
+                          service?.localisedName(context) ?? l10n.serviceNotSelectedOnCard,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             fontSize: 13,
                             color: service == null

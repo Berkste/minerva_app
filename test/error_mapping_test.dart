@@ -54,6 +54,65 @@ void main() {
       }
     });
 
+    test('MN002 means the 21-day window, and carries the dates', () {
+      // "You cannot book yet" is true but useless on its own; the trigger
+      // names the clashing day so the app can say when they can.
+      final result = translate(postgres(
+        'MN002',
+        'Only one appointment per 21 days; this customer already has one on 2026-10-03',
+      ));
+
+      expect(result, isA<BookingWindowException>());
+      final window = result as BookingWindowException;
+      expect(window.existingDate, DateTime(2026, 10, 3));
+      expect(window.nextAvailable, DateTime(2026, 10, 24));
+    });
+
+    test('…and still explains itself when the message has no date', () {
+      // Parsing a message is a best effort. Losing the detail must not cost
+      // the customer the explanation.
+      final result = translate(postgres('MN002', 'too soon'));
+
+      expect(result, isA<BookingWindowException>());
+      expect((result as BookingWindowException).nextAvailable, isNull);
+    });
+
+    test('MN003 means the salon is shut that day', () {
+      expect(
+        translate(postgres('MN003', 'The salon is closed on Sundays')),
+        isA<SalonClosedException>(),
+      );
+    });
+
+    test('MN004 means it is too late to cancel', () {
+      expect(translate(postgres('MN004')), isA<CancelTooLateException>());
+    });
+
+    test('MN005 means the name does not match the number', () {
+      expect(translate(postgres('MN005')), isA<NameDoesNotMatchException>());
+    });
+
+    test('MN006 stays generic — it is a client bug, not a rule', () {
+      // Asking for a treatment that does not exist is the app's mistake. It
+      // must not be dressed up as something the customer did wrong.
+      final result = translate(postgres('MN006', 'No such treatment: nope'));
+
+      expect(result, isA<BookingFailedException>());
+      expect(result, isNot(isA<SalonClosedException>()));
+    });
+
+    test('every rule maps to a different outcome', () {
+      // The codes exist to be told apart. If two ever collapsed onto the same
+      // exception, the customer would be given the wrong reason — which is
+      // exactly the bug that made MN001 necessary in the first place.
+      final outcomes = <String>{
+        for (final code in ['23505', 'MN001', 'MN002', 'MN003', 'MN004', 'MN005'])
+          translate(postgres(code)).runtimeType.toString(),
+      };
+
+      expect(outcomes.length, 6);
+    });
+
     test('an unrecognised code keeps its code and message', () {
       final result = translate(postgres('42501', 'permission denied'));
 

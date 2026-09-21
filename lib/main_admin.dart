@@ -11,6 +11,7 @@ import 'providers/locale_provider.dart';
 import 'screens/setup_required_screen.dart';
 import 'services/booking_repository.dart';
 import 'services/supabase_booking_repository.dart';
+import 'providers/catalogue_provider.dart';
 
 /// Admin / employee entry point — a SEPARATE build for salon staff, never
 /// shipped to the app stores. Build it with:
@@ -85,6 +86,12 @@ class MinervaAdminApp extends StatelessWidget {
         // AdminApp itself.
         Provider<BookingRepository>.value(value: repository),
         ChangeNotifierProvider(create: (_) => LocaleProvider()..load()),
+
+        // The treatment catalogue, shared with the schedule so a booking can
+        // show what it is for. Same provider as the customer app uses.
+        ChangeNotifierProvider(
+          create: (_) => CatalogueProvider(repository)..load(),
+        ),
       ],
       child: Consumer<LocaleProvider>(
         builder: (context, localeProvider, _) => AppShell(

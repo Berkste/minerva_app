@@ -6,13 +6,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:minerva_app/l10n/app_localizations.dart';
 import 'package:minerva_app/models/appointment.dart';
-import 'package:minerva_app/models/profile.dart';
+import 'package:minerva_app/models/customer.dart';
+import 'package:minerva_app/models/salon_service.dart';
 import 'package:minerva_app/models/slot.dart';
 import 'package:minerva_app/providers/availability_provider.dart';
 import 'package:minerva_app/screens/setup_required_screen.dart';
 import 'package:minerva_app/providers/appointment_provider.dart';
 import 'package:minerva_app/providers/booking_provider.dart';
 import 'package:minerva_app/providers/locale_provider.dart';
+import 'package:minerva_app/providers/catalogue_provider.dart';
 import 'package:minerva_app/screens/appointments_screen.dart';
 import 'package:minerva_app/screens/booking/calendar_screen.dart';
 import 'package:minerva_app/screens/booking/details_screen.dart';
@@ -54,14 +56,27 @@ void main() {
 
   final sampleSlot = Slot(DateTime.now().add(const Duration(days: 3)), 16);
 
+  const sampleCustomer = Customer(
+    id: 'cust-1',
+    firstName: 'Elif',
+    lastName: 'Yilmaz',
+    phone: '5551234567',
+  );
+
   final sampleAppointment = Appointment(
     id: 'sample',
-    userId: 'user-1',
+    customerId: sampleCustomer.id,
     slot: sampleSlot,
     firstName: 'Elif',
     lastName: 'Yilmaz',
     phone: '5551234567',
-    serviceId: 'classic_manicure',
+    services: const [
+      AppointmentService(
+        serviceId: 'medikal_manikur',
+        kind: ServiceKind.main,
+        amount: 450,
+      ),
+    ],
   );
 
   /// A fully-populated draft, so review/success render their richest state.
@@ -105,13 +120,10 @@ void main() {
                 addTearDown(tester.view.reset);
 
                 final repo = FakeBookingRepository()
-                  ..appointments.add(sampleAppointment)
-                  ..profile = const Profile(
-                    id: 'user-1',
-                    firstName: 'Elif',
-                    lastName: 'Yilmaz',
-                    phone: '5551234567',
-                  );
+                  ..signedIn = true
+                  ..customers.add(sampleCustomer)
+                  ..linkedCustomerId = sampleCustomer.id
+                  ..appointments.add(sampleAppointment);
 
                 final appointments = AppointmentProvider(repo);
                 await appointments.load();
@@ -120,6 +132,9 @@ void main() {
                   MultiProvider(
                     providers: [
                       ChangeNotifierProvider.value(value: appointments),
+                      ChangeNotifierProvider(
+                        create: (_) => CatalogueProvider(repo)..load(),
+                      ),
                       ChangeNotifierProvider.value(value: filledBooking()),
                       ChangeNotifierProvider(
                         create: (_) => AvailabilityProvider(repo),

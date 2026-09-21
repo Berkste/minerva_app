@@ -122,6 +122,12 @@
 
   "slotJustTaken": "Bu saat az önce başkası tarafından alındı. Lütfen başka bir saat seçin.",
   "slotInThePast": "Bu saat geçti. Lütfen ileri bir tarih seçin.",
+  "bookingWindow": "Üç haftada bir randevu alabilirsiniz. Mevcut randevunuz duruyor.",
+  "bookingWindowUntil": "Üç haftada bir randevu alabilirsiniz. En erken {date} tarihine randevu alabilirsiniz.",
+  "@bookingWindowUntil": { "placeholders": { "date": { "type": "String" } } },
+  "salonClosedThatDay": "Salon o gün kapalı. Lütfen başka bir gün seçin.",
+  "cancelTooLate": "Randevunuza bir saatten az kaldı. İptal için lütfen salonu arayın.",
+  "nameDoesNotMatch": "Bu telefon numarası için girdiğiniz ad kayıtlı bilgiyle eşleşmiyor. Lütfen kontrol edin.",
   "connectionProblem": "Bağlantı kurulamadı. İnternetinizi kontrol edip tekrar deneyin.",
   "somethingWentWrong": "Bir şeyler ters gitti. Lütfen tekrar deneyin.",
   "retry": "Tekrar dene",

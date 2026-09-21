@@ -109,6 +109,12 @@
 
   "slotJustTaken": "Someone else just booked that time. Please pick another one.",
   "slotInThePast": "That time has already passed. Please pick a later one.",
+  "bookingWindow": "You can book once every three weeks. Your existing appointment still stands.",
+  "bookingWindowUntil": "You can book once every three weeks. The earliest you can book is {date}.",
+  "@bookingWindowUntil": { "placeholders": { "date": { "type": "String" } } },
+  "salonClosedThatDay": "The salon is closed that day. Please pick another one.",
+  "cancelTooLate": "Your appointment is less than an hour away. Please call the salon to cancel.",
+  "nameDoesNotMatch": "The name you entered does not match the one held for this phone number. Please check it.",
   "connectionProblem": "Could not connect. Check your internet and try again.",
   "somethingWentWrong": "Something went wrong. Please try again.",
   "retry": "Try again",

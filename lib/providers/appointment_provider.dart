@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../models/appointment.dart';
-import '../models/profile.dart';
+import '../models/customer.dart';
 import '../models/slot.dart';
 import '../services/booking_exception.dart';
 import '../services/booking_repository.dart';
@@ -10,7 +10,7 @@ import '../services/local_cache.dart';
 /// What the appointment list is currently doing.
 enum LoadState { loading, ready, failed }
 
-/// Owns the signed-in user's bookings and their saved profile.
+/// Owns this device's bookings and the person they belong to.
 ///
 /// Supabase is the source of truth. The local cache only fills in when a
 /// refresh fails, so the customer still sees their next appointment offline.
@@ -22,7 +22,7 @@ class AppointmentProvider extends ChangeNotifier {
   final LocalCache _cache;
 
   List<Appointment> _appointments = [];
-  Profile? _profile;
+  Customer? _customer;
   LoadState _state = LoadState.loading;
   BookingException? _error;
 
@@ -30,7 +30,7 @@ class AppointmentProvider extends ChangeNotifier {
   bool _isStale = false;
 
   List<Appointment> get appointments => List.unmodifiable(_appointments);
-  Profile? get profile => _profile;
+  Customer? get customer => _customer;
   LoadState get state => _state;
   BookingException? get error => _error;
   bool get isStale => _isStale;
@@ -55,12 +55,12 @@ class AppointmentProvider extends ChangeNotifier {
 
   Appointment? get nextAppointment => upcoming.isEmpty ? null : upcoming.first;
 
-  /// Loads this device's bookings and profile. Safe to call more than once.
+  /// Loads this device's bookings and the person they belong to.
   ///
   /// Does NOT sign in. Opening the app creates nothing in the database — a
-  /// device without a session simply has no bookings and no profile, and the
-  /// repository answers both without a round trip. The identity is created on
-  /// the first real action (see [book]).
+  /// device without a session simply has no bookings and no customer record,
+  /// and the repository answers both without a round trip. The identity is
+  /// created on the first real action (see [book]).
   Future<void> load() async {
     _state = LoadState.loading;
     _error = null;
@@ -69,22 +69,22 @@ class AppointmentProvider extends ChangeNotifier {
     try {
       final results = await Future.wait([
         _repository.fetchMyAppointments(),
-        _repository.fetchProfile(),
+        _repository.currentCustomer(),
       ]);
 
       _appointments = _sorted(results[0] as List<Appointment>);
-      _profile = results[1] as Profile?;
+      _customer = results[1] as Customer?;
       _isStale = false;
       _state = LoadState.ready;
       _error = null;
 
       // Refresh the offline copy.
       await _cache.writeAppointments(_appointments);
-      await _cache.writeProfile(_profile);
+      await _cache.writeCustomer(_customer);
     } on BookingException catch (failure) {
       // Fall back to whatever was last seen, and say so.
       _appointments = _sorted(await _cache.readAppointments());
-      _profile = await _cache.readProfile();
+      _customer = await _cache.readCustomer();
       _isStale = true;
       _error = failure;
       _state = _appointments.isEmpty ? LoadState.failed : LoadState.ready;
@@ -93,14 +93,16 @@ class AppointmentProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Books [slot] and records the customer's details on their profile.
+  /// Books [slot], creating or claiming the customer in the same call.
   ///
-  /// Rethrows [SlotTakenException] when someone else got there first, so the
-  /// review screen can send the customer back to pick another time.
+  /// Rethrows the rule the customer hit — [SlotTakenException] when somebody
+  /// else got there first, [BookingWindowException] when they already have one
+  /// within three weeks, [SalonClosedException], [NameDoesNotMatchException] —
+  /// so the review screen can say which, rather than "something went wrong".
   Future<Appointment> book({
     required Slot slot,
     required String firstName,
-    required String lastName,
+    String? lastName,
     required String phone,
     String? serviceId,
   }) async {
@@ -115,23 +117,61 @@ class AppointmentProvider extends ChangeNotifier {
     _appointments = _sorted([..._appointments, appointment]);
     notifyListeners();
 
-    // The booking is what matters; a profile write that fails must not undo
-    // it or block the confirmation screen.
+    // The booking is what matters. Reading the customer back is how the
+    // profile screen learns who this device now is, but failing to is not
+    // worth undoing a confirmed appointment over.
     try {
-      _profile = await _repository.saveProfile(
-        firstName: firstName,
-        lastName: lastName,
-        phone: phone,
-      );
-      await _cache.writeProfile(_profile);
+      _customer = await _repository.currentCustomer();
+      await _cache.writeCustomer(_customer);
     } on BookingException {
-      // Left for the next successful booking to write.
+      // Left for the next load to pick up.
     }
 
     await _cache.writeAppointments(_appointments);
     notifyListeners();
 
     return appointment;
+  }
+
+  /// Saves the customer's own contact details.
+  ///
+  /// The profile screen's Save. On a device that has never booked this creates
+  /// the person, which is the same thing booking does — there is no separate
+  /// act of registering.
+  Future<Customer> saveCustomer({
+    required String firstName,
+    String? lastName,
+    required String phone,
+  }) async {
+    final customer = await _repository.updateCustomer(
+      firstName: firstName,
+      lastName: lastName,
+      phone: phone,
+    );
+
+    _customer = customer;
+    await _cache.writeCustomer(customer);
+    notifyListeners();
+    return customer;
+  }
+
+  /// Moves a booking to a different slot.
+  Future<Appointment> reschedule(String appointmentId, Slot slot) async {
+    final updated = await _repository.reschedule(appointmentId, slot);
+
+    _appointments = _sorted([
+      for (final a in _appointments)
+        if (a.id == appointmentId) updated else a,
+    ]);
+    await _cache.writeAppointments(_appointments);
+    notifyListeners();
+    return updated;
+  }
+
+  /// Changes the treatment on a booking; null clears it.
+  Future<void> setTreatment(String appointmentId, String? serviceId) async {
+    await _repository.setTreatment(appointmentId, serviceId);
+    await load();
   }
 
   /// Cancels a booking, which releases its slot for someone else.

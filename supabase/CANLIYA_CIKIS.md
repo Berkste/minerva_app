@@ -1,32 +1,22 @@
 # Faz 1 — şema göçü: uygulama adımları
 
-**Proje:** `dycjvupgvuxkguorzaqz` · **Hazırlandı:** 2026-09-21 · **Durum:** uygulanmayı bekliyor
+**Proje:** `dycjvupgvuxkguorzaqz` · **Durum:** çalıştırılmaya hazır
 
 Bu dosya, Faz 2 tasarımının veritabanı tarafını canlıya almak için **senin**
 yapacağın işleri sırasıyla anlatır. Tasarımın gerekçesi `FAZ2_ANALIZ.md`'de.
 
 ---
 
-## ⛔ Önce oku — bunu ne zaman çalıştırmalısın
+## ✅ Sıra geldi — Faz 2 tamamlandı
 
-**Bu göç, uygulama kodu henüz yeni şemaya göre yazılmadan hazırlandı.**
-`lib/` altındaki kod bugün hâlâ `profiles`, `user_id` ve tek bir `service_id`
-kolonu kullanıyor; bunların hepsi kalkıyor.
+Bu göç, uygulama kodu eski şemaya göreyken hazırlanmıştı. **Artık değil:** Faz 2
+bitti, `lib/` altındaki her şey yeni şemaya taşındı ve `profiles`, `user_id`, tek
+`service_id` kolonu kodda hiç kalmadı.
 
-Yani: **SQL'i çalıştırdığın an mevcut uygulama çalışmayı bırakır.** Bu bir hata
-değil, sıranın kendisi — Faz 2'de kod yeni şemaya taşınacak.
+Yani uygulama şu anda **yeni şemayı bekliyor**. Bu SQL çalıştırılmadan derlenen bir
+build canlı veritabanına bağlanamaz — tablolar tutmuyor.
 
-Üç seçenek var, tercihin bana bağlı değil:
-
-- **Şimdi çalıştır** — veritabanı tarafı bitmiş olur, uygulama Faz 2 bitene kadar
-  kullanılamaz. Gerçek kullanıcı olmadığı için pratikte bir kaybı yok.
-- **Faz 2 bitince çalıştır** — ikisi aynı anda canlıya gider, arada hiçbir şey
-  bozulmaz. **Önerim bu.**
-- Şu an hiç çalıştırma, Faz 2'yi yazarken karar ver.
-
-Hangisini seçersen seç, aşağıdaki adımlar aynı.
-
----
+**Şimdi çalıştırılabilir.** 250/250 test geçiyor, `flutter analyze` temiz.
 
 ## Ne değişiyor
 
@@ -123,8 +113,9 @@ dönmeli** (aynı slotta iki canlı randevu). 7. bölümde katalog özeti görü
 
 ## Bundan sonra
 
-Faz 2: uygulama kodunun yeni şemaya taşınması. O bitmeden uygulamayı kimseye
-dağıtmanın anlamı yok.
+Sırada Faz 3 ve 4 var: müşteri ve admin ekranlarının tamamlanması. Çekirdek hazır,
+eksik olan yalnızca arayüz — bu yüzden SQL çalıştıktan sonra uygulama temel akışı
+(gez → gün seç → saat seç → bilgi gir → randevu al) baştan sona yapabilir.
 
 `04_faz2_reset.sql` bu göçten sonra bir daha **çalıştırılmamalı** — ilk gerçek
 randevudan itibaren salonun kayıtlarını siler.

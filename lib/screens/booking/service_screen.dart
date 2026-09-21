@@ -8,6 +8,7 @@ import '../../theme/app_colors.dart';
 import '../../widgets/common.dart';
 import '../../widgets/gradient_button.dart';
 import 'review_screen.dart';
+import '../../providers/catalogue_provider.dart';
 
 /// Step 4 of 5 — the optional treatment choice.
 ///
@@ -27,6 +28,7 @@ class ServiceScreen extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final booking = context.watch<BookingProvider>();
+    final treatments = context.watch<CatalogueProvider>().treatments;
 
     return Scaffold(
       appBar: AppBar(
@@ -55,19 +57,16 @@ class ServiceScreen extends StatelessWidget {
                     padding: EdgeInsets.zero,
                     child: Column(
                       children: [
-                        for (var i = 0;
-                            i < SalonService.catalogue.length;
-                            i++) ...[
+                        for (var i = 0; i < treatments.length; i++) ...[
                           if (i > 0) const Divider(indent: 16, endIndent: 16),
                           _ServiceTile(
-                            service: SalonService.catalogue[i],
-                            isSelected: booking.serviceId ==
-                                SalonService.catalogue[i].id,
+                            service: treatments[i],
+                            isSelected: booking.serviceId == treatments[i].id,
                             // Tapping the selected row again clears it, which
                             // is how the user "unpicks" without leaving.
                             onTap: () {
                               final provider = context.read<BookingProvider>();
-                              final id = SalonService.catalogue[i].id;
+                              final id = treatments[i].id;
                               provider.selectService(
                                 provider.serviceId == id ? null : id,
                               );
@@ -143,7 +142,7 @@ class _ServiceTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      service.name(AppLocalizations.of(context)),
+                      service.localisedName(context),
                       style: theme.textTheme.bodyMedium?.copyWith(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w500,

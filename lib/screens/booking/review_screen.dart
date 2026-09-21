@@ -14,6 +14,7 @@ import '../../widgets/common.dart';
 import '../../widgets/gradient_button.dart';
 import 'success_screen.dart';
 import 'time_screen.dart';
+import '../../providers/catalogue_provider.dart';
 
 /// Step 5 of 5 — everything the user chose, in one place, before it is saved.
 class ReviewScreen extends StatefulWidget {
@@ -98,7 +99,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
     }
 
     final start = slot.start;
-    final service = SalonService.byId(booking.serviceId);
+    final service = context.watch<CatalogueProvider>().byId(booking.serviceId);
 
     return Scaffold(
       appBar: AppBar(
@@ -134,7 +135,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                         InfoRow(
                           icon: Icons.spa_outlined,
                           label: l10n.labelService,
-                          value: service?.name(l10n) ?? l10n.serviceNotSelected,
+                          value: service?.localisedName(context) ?? l10n.serviceNotSelected,
                         ),
                         if (service != null)
                           InfoRow(

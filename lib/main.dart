@@ -8,6 +8,7 @@ import 'app_shell.dart';
 import 'config/supabase_config.dart';
 import 'providers/appointment_provider.dart';
 import 'providers/availability_provider.dart';
+import 'providers/catalogue_provider.dart';
 import 'providers/booking_provider.dart';
 import 'providers/locale_provider.dart';
 import 'screens/setup_required_screen.dart';
@@ -92,6 +93,13 @@ class MinervaApp extends StatelessWidget {
         // Live slot availability for the day being viewed.
         ChangeNotifierProvider(
           create: (_) => AvailabilityProvider(repository),
+        ),
+
+        // The salon's treatments. Loaded once: every screen that shows a
+        // treatment name resolves it from here, and it is a handful of rows
+        // that change when the salon says so, not per booking.
+        ChangeNotifierProvider(
+          create: (_) => CatalogueProvider(repository)..load(),
         ),
 
         // The booking currently being filled in.

@@ -102,7 +102,6 @@ expected_policies(tbl, pol, cmd) as (values
   ('appointments',         'appointments_update_admin',         'UPDATE'),
 
   ('appointment_services', 'appointment_services_select_own',   'SELECT'),
-  ('appointment_services', 'appointment_services_insert_own',   'INSERT'),
   ('appointment_services', 'appointment_services_select_admin', 'SELECT'),
   ('appointment_services', 'appointment_services_insert_admin', 'INSERT'),
   ('appointment_services', 'appointment_services_update_admin', 'UPDATE'),
@@ -330,6 +329,8 @@ c_functions as (
     ('public.is_admin()',                      true),
     ('public.current_customer_id()',           true),
     ('public.claim_customer(text,text,text)',  true),
+    ('public.book_appointment(text,text,text,date,smallint,text)', true),
+    ('public.set_appointment_service(uuid,text)', true),
     ('public.booked_slots(date,date)',         true),
     ('public.closed_days(date,date)',          true),
     ('public.stamp_appointment_origin()',      true),
@@ -390,7 +391,11 @@ c_grants as (
     ('anon',          'public.current_customer_id()',          false),
     ('authenticated', 'public.current_customer_id()',          true),
     ('anon',          'public.claim_customer(text,text,text)', false),
-    ('authenticated', 'public.claim_customer(text,text,text)', true)
+    ('authenticated', 'public.claim_customer(text,text,text)', true),
+    ('anon',          'public.book_appointment(text,text,text,date,smallint,text)', false),
+    ('authenticated', 'public.book_appointment(text,text,text,date,smallint,text)', true),
+    ('anon',          'public.set_appointment_service(uuid,text)', false),
+    ('authenticated', 'public.set_appointment_service(uuid,text)', true)
   ) as want(role_name, sig, should)
 ),
 
@@ -508,6 +513,8 @@ c_extra_definers as (
           'public.is_admin()',
           'public.current_customer_id()',
           'public.claim_customer(text, text, text)',
+          'public.book_appointment(text, text, text, date, smallint, text)',
+          'public.set_appointment_service(uuid, text)',
           'public.booked_slots(date, date)',
           'public.closed_days(date, date)',
           'public.stamp_appointment_origin()',

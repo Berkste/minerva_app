@@ -311,6 +311,27 @@ class AppLocalizationsTr extends AppLocalizations {
   String get slotInThePast => 'Bu saat geçti. Lütfen ileri bir tarih seçin.';
 
   @override
+  String get bookingWindow =>
+      'Üç haftada bir randevu alabilirsiniz. Mevcut randevunuz duruyor.';
+
+  @override
+  String bookingWindowUntil(String date) {
+    return 'Üç haftada bir randevu alabilirsiniz. En erken $date tarihine randevu alabilirsiniz.';
+  }
+
+  @override
+  String get salonClosedThatDay =>
+      'Salon o gün kapalı. Lütfen başka bir gün seçin.';
+
+  @override
+  String get cancelTooLate =>
+      'Randevunuza bir saatten az kaldı. İptal için lütfen salonu arayın.';
+
+  @override
+  String get nameDoesNotMatch =>
+      'Bu telefon numarası için girdiğiniz ad kayıtlı bilgiyle eşleşmiyor. Lütfen kontrol edin.';
+
+  @override
   String get connectionProblem =>
       'Bağlantı kurulamadı. İnternetinizi kontrol edip tekrar deneyin.';
 

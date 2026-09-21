@@ -7,12 +7,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:minerva_app/l10n/app_localizations.dart';
 import 'package:minerva_app/main.dart';
 import 'package:minerva_app/models/appointment.dart';
-import 'package:minerva_app/models/profile.dart';
+import 'package:minerva_app/models/customer.dart';
+import 'package:minerva_app/models/salon_service.dart';
 import 'package:minerva_app/models/slot.dart';
 import 'package:minerva_app/providers/appointment_provider.dart';
 import 'package:minerva_app/providers/availability_provider.dart';
 import 'package:minerva_app/providers/booking_provider.dart';
 import 'package:minerva_app/providers/locale_provider.dart';
+import 'package:minerva_app/providers/catalogue_provider.dart';
 import 'package:minerva_app/screens/booking/calendar_screen.dart';
 import 'package:minerva_app/screens/booking/details_screen.dart';
 import 'package:minerva_app/screens/booking/review_screen.dart';
@@ -56,6 +58,7 @@ Widget _wrapBookingScreen(
     providers: [
       ChangeNotifierProvider(create: (_) => AppointmentProvider(repo)..load()),
       ChangeNotifierProvider(create: (_) => AvailabilityProvider(repo)),
+      ChangeNotifierProvider(create: (_) => CatalogueProvider(repo)..load()),
       ChangeNotifierProvider(
         create: (_) => BookingProvider()
           ..selectDate(DateTime.now().add(const Duration(days: 2)))
@@ -73,7 +76,7 @@ Widget _wrapBookingScreen(
 
 Appointment _appointmentAt(Slot slot, {String id = 'test'}) => Appointment(
       id: id,
-      userId: 'user-1',
+      customerId: 'cust-1',
       slot: slot,
       firstName: 'Test',
       lastName: 'Customer',
@@ -94,12 +97,18 @@ void main() {
   group('Appointment', () {
     final appointment = Appointment(
       id: 'a1',
-      userId: 'user-1',
+      customerId: 'cust-1',
       slot: Slot(DateTime(2026, 8, 14), 16),
       firstName: 'Elif',
       lastName: 'Yilmaz',
       phone: '5551234567',
-      serviceId: 'classic_manicure',
+      services: const [
+        AppointmentService(
+          serviceId: 'medikal_manikur',
+          kind: ServiceKind.main,
+          amount: 450,
+        ),
+      ],
     );
 
     test('ends two hours after it starts', () {
@@ -115,17 +124,16 @@ void main() {
       expect(restored.id, appointment.id);
       expect(restored.slot, appointment.slot);
       expect(restored.fullName, 'Elif Yilmaz');
-      expect(restored.serviceId, 'classic_manicure');
+      expect(restored.mainService?.serviceId, 'medikal_manikur');
+      expect(restored.total, 450);
       expect(restored.status, AppointmentStatus.confirmed);
     });
 
-    test('the insert payload carries the wall-clock slot, not an instant', () {
-      final payload = appointment.toInsert();
+    test('the cached payload carries the wall-clock slot, not an instant', () {
+      final payload = appointment.toJson();
 
       expect(payload['slot_date'], '2026-08-14');
       expect(payload['slot_hour'], 16);
-      expect(payload.containsKey('id'), isFalse, reason: 'server assigns it');
-      expect(payload.containsKey('status'), isFalse);
     });
 
     test('is upcoming only until it has finished', () {
@@ -370,17 +378,17 @@ void main() {
   group('LocalCache', () {
     test('returns nothing when the device has never cached anything', () async {
       expect(await LocalCache().readAppointments(), isEmpty);
-      expect(await LocalCache().readProfile(), isNull);
+      expect(await LocalCache().readCustomer(), isNull);
     });
 
-    test('round trips appointments and profile', () async {
+    test('round trips appointments and the customer', () async {
       final cache = LocalCache();
       final appointment = _appointmentAt(Slot(DateTime(2026, 9, 4), 14));
 
       await cache.writeAppointments([appointment]);
-      await cache.writeProfile(
-        const Profile(
-          id: 'user-1',
+      await cache.writeCustomer(
+        const Customer(
+          id: 'cust-1',
           firstName: 'Ayse',
           lastName: 'Celik',
           phone: '5551234567',
@@ -390,17 +398,17 @@ void main() {
       final appointments = await cache.readAppointments();
       expect(appointments.single.id, appointment.id);
       expect(appointments.single.slot, appointment.slot);
-      expect((await cache.readProfile())?.fullName, 'Ayse Celik');
+      expect((await cache.readCustomer())?.displayName, 'Ayse Celik');
     });
 
     test('recovers from corrupted data instead of throwing', () async {
       SharedPreferences.setMockInitialValues({
-        'minerva.cache.appointments.v2': 'not json at all',
-        'minerva.cache.profile.v2': '{{{',
+        'minerva.cache.appointments.v3': 'not json at all',
+        'minerva.cache.customer.v3': '{{{',
       });
 
       expect(await LocalCache().readAppointments(), isEmpty);
-      expect(await LocalCache().readProfile(), isNull);
+      expect(await LocalCache().readCustomer(), isNull);
     });
 
     test('clear() empties everything', () async {
@@ -574,12 +582,13 @@ void main() {
       // now — a profile cannot exist without the session that created it.
       final repo = FakeBookingRepository()
         ..signedIn = true
-        ..profile = const Profile(
-          id: 'user-1',
+        ..customers.add(const Customer(
+          id: 'cust-1',
           firstName: 'Ayse',
           lastName: 'Celik',
           phone: '5551234567',
-        );
+        ))
+        ..linkedCustomerId = 'cust-1';
 
       await tester.pumpWidget(
         _wrapBookingScreen(
@@ -648,12 +657,13 @@ void main() {
       // now — a profile cannot exist without the session that created it.
       final repo = FakeBookingRepository()
         ..signedIn = true
-        ..profile = const Profile(
-          id: 'user-1',
+        ..customers.add(const Customer(
+          id: 'cust-1',
           firstName: 'Ayse',
           lastName: 'Celik',
           phone: '5551234567',
-        );
+        ))
+        ..linkedCustomerId = 'cust-1';
 
       await tester.pumpWidget(MinervaApp(repository: repo));
       await tester.pumpAndSettle();
@@ -724,6 +734,7 @@ void main() {
             ChangeNotifierProvider.value(value: booking),
             ChangeNotifierProvider.value(value: appointments),
             ChangeNotifierProvider.value(value: availability),
+            ChangeNotifierProvider(create: (_) => CatalogueProvider(repo)..load()),
           ],
           child: MaterialApp(
             locale: const Locale('en'),
@@ -794,6 +805,7 @@ void main() {
               create: (_) => AppointmentProvider(repo)..load(),
             ),
             ChangeNotifierProvider(create: (_) => AvailabilityProvider(repo)),
+            ChangeNotifierProvider(create: (_) => CatalogueProvider(repo)..load()),
           ],
           child: MaterialApp(
             locale: const Locale('en'),

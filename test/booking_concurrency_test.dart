@@ -1,7 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:minerva_app/models/profile.dart';
+import 'package:minerva_app/models/appointment.dart';
+import 'package:minerva_app/models/customer.dart';
 import 'package:minerva_app/models/slot.dart';
 import 'package:minerva_app/providers/appointment_provider.dart';
 import 'package:minerva_app/providers/availability_provider.dart';
@@ -124,6 +125,9 @@ void main() {
     });
 
     test('a different hour on the same day is unaffected', () async {
+      // The guarantee is per slot, not per day: one customer at 14:00 must not
+      // stop a different customer taking 16:00. (The same customer could not —
+      // that is the booking window's job, tested below.)
       final repo = FakeBookingRepository();
       final provider = await providerFor(repo);
 
@@ -134,15 +138,115 @@ void main() {
         phone: '5551234567',
       );
 
-      final other = await provider.book(
-        slot: Slot(slot.date, 16),
-        firstName: 'Ayse',
-        lastName: 'Celik',
-        phone: '5551234567',
-      );
+      final other = repo.bookAsSomeoneElse(Slot(slot.date, 16));
 
       expect(other.slot.hour, 16);
       expect(repo.appointments.length, 2);
+    });
+  });
+
+  group('One visit per three weeks', () {
+    // The rule the database enforces as MN002. The fake mirrors it, so the
+    // app's half of the contract — surfacing it as an explainable outcome
+    // rather than a crash — can be tested without a live database.
+
+    Future<Appointment> bookAt(AppointmentProvider provider, Slot at) =>
+        provider.book(
+          slot: at,
+          firstName: 'Ayse',
+          lastName: 'Celik',
+          phone: '5551234567',
+        );
+
+    test('a second booking inside the window is refused', () async {
+      final repo = FakeBookingRepository();
+      final provider = await providerFor(repo);
+
+      await bookAt(provider, slot);
+
+      expect(
+        () => bookAt(provider, Slot(slot.date.add(const Duration(days: 7)), 10)),
+        throwsA(isA<BookingWindowException>()),
+      );
+    });
+
+    test('it applies backwards too, not only forwards', () async {
+      // Booking an *earlier* day after a later one would otherwise slip
+      // through a rule written as "21 days after".
+      final repo = FakeBookingRepository();
+      final provider = await providerFor(repo);
+
+      await bookAt(provider, Slot(slot.date.add(const Duration(days: 10)), 10));
+
+      expect(
+        () => bookAt(provider, slot),
+        throwsA(isA<BookingWindowException>()),
+      );
+    });
+
+    test('exactly 21 days apart is allowed', () async {
+      final repo = FakeBookingRepository();
+      final provider = await providerFor(repo);
+
+      await bookAt(provider, slot);
+      final second = await bookAt(
+        provider,
+        Slot(slot.date.add(const Duration(days: 21)), 10),
+      );
+
+      expect(second.slot.date, slot.date.add(const Duration(days: 21)));
+    });
+
+    test('the refusal names the day that is in the way', () async {
+      final repo = FakeBookingRepository();
+      final provider = await providerFor(repo);
+
+      await bookAt(provider, slot);
+
+      try {
+        await bookAt(provider, Slot(slot.date.add(const Duration(days: 3)), 10));
+        fail('expected the window to refuse this');
+      } on BookingWindowException catch (failure) {
+        // Without this the customer is told "not yet" and nothing else.
+        expect(failure.existingDate, slot.date);
+        expect(failure.nextAvailable, slot.date.add(const Duration(days: 21)));
+      }
+    });
+
+    test('a cancelled booking stops holding the window', () async {
+      final repo = FakeBookingRepository();
+      final provider = await providerFor(repo);
+
+      final first = await bookAt(provider, slot);
+      await provider.cancel(first.id);
+
+      final second = await bookAt(
+        provider,
+        Slot(slot.date.add(const Duration(days: 2)), 10),
+      );
+      expect(second.id, isNotEmpty);
+    });
+
+    test('a no-show releases the customer as well', () async {
+      // Marking somebody a no-show is not only a label for the statistics
+      // page: it is what lets them book again, because they received nothing.
+      final repo = FakeBookingRepository();
+      final provider = await providerFor(repo);
+
+      final first = await bookAt(provider, slot);
+
+      await repo.adminSignIn(
+        email: repo.validAdminEmail,
+        password: repo.validAdminPassword,
+      );
+      await repo.adminSetStatus(first.id, AppointmentStatus.noShow);
+      await repo.adminSignOut();
+
+      final second = await bookAt(
+        provider,
+        Slot(slot.date.add(const Duration(days: 2)), 10),
+      );
+      expect(second.id, isNotEmpty);
     });
   });
 
@@ -228,12 +332,12 @@ void main() {
     });
   });
 
-  group('Profiles', () {
-    test('the first booking turns a guest into a saved profile', () async {
+  group('Customers', () {
+    test('the first booking turns a visitor into a customer', () async {
       final repo = FakeBookingRepository();
       final provider = await providerFor(repo);
 
-      expect(provider.profile, isNull, reason: 'starts as a guest');
+      expect(provider.customer, isNull, reason: 'nobody has booked yet');
 
       await provider.book(
         slot: slot,
@@ -242,9 +346,10 @@ void main() {
         phone: '5551234567',
       );
 
-      expect(provider.profile?.fullName, 'Ayse Celik');
-      expect(provider.profile?.phone, '5551234567');
-      expect(provider.profile?.id, repo.userId);
+      expect(provider.customer?.displayName, 'Ayse Celik');
+      expect(provider.customer?.phone, '5551234567');
+      // The identity is the person, not the device that created them.
+      expect(provider.customer?.id, repo.linkedCustomerId);
     });
 
     test('a later booking updates the saved details', () async {
@@ -264,8 +369,8 @@ void main() {
         phone: '5559998877',
       );
 
-      expect(provider.profile?.lastName, 'Yilmaz');
-      expect(provider.profile?.phone, '5559998877');
+      expect(provider.customer?.lastName, 'Yilmaz');
+      expect(provider.customer?.phone, '5559998877');
     });
 
     test('the booking still stands if saving the profile fails', () async {
@@ -282,7 +387,7 @@ void main() {
 
       expect(appointment.id, isNotEmpty);
       expect(provider.upcoming.length, 1);
-      expect(provider.profile, isNull);
+      expect(provider.customer, isNull);
     });
   });
 
@@ -298,7 +403,7 @@ void main() {
 
       expect(repo.signedIn, isFalse);
       expect(provider.upcoming, isEmpty);
-      expect(provider.profile, isNull);
+      expect(provider.customer, isNull);
     });
 
     test('the first booking is what creates the identity', () async {
@@ -353,14 +458,10 @@ void main() {
   });
 }
 
-/// Books fine, but never manages to write the profile.
+/// Books fine, but never manages to read the customer back afterwards.
 class _ProfileFailingRepository extends FakeBookingRepository {
   @override
-  Future<Profile> saveProfile({
-    required String firstName,
-    required String lastName,
-    required String phone,
-  }) async {
-    throw const BookingFailedException('profile write failed');
+  Future<Customer?> currentCustomer() async {
+    throw const BookingFailedException('customer read failed');
   }
 }

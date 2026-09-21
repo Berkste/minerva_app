@@ -310,6 +310,27 @@ class AppLocalizationsEn extends AppLocalizations {
       'That time has already passed. Please pick a later one.';
 
   @override
+  String get bookingWindow =>
+      'You can book once every three weeks. Your existing appointment still stands.';
+
+  @override
+  String bookingWindowUntil(String date) {
+    return 'You can book once every three weeks. The earliest you can book is $date.';
+  }
+
+  @override
+  String get salonClosedThatDay =>
+      'The salon is closed that day. Please pick another one.';
+
+  @override
+  String get cancelTooLate =>
+      'Your appointment is less than an hour away. Please call the salon to cancel.';
+
+  @override
+  String get nameDoesNotMatch =>
+      'The name you entered does not match the one held for this phone number. Please check it.';
+
+  @override
   String get connectionProblem =>
       'Could not connect. Check your internet and try again.';
 

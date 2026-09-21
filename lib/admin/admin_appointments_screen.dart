@@ -12,6 +12,7 @@ import '../utils/error_messages.dart';
 import '../utils/formatting.dart';
 import '../widgets/common.dart';
 import '../widgets/gradient_button.dart';
+import '../providers/catalogue_provider.dart';
 
 /// The salon-wide schedule as a calendar: the admin lands on today, sees a
 /// month grid with a marker under every day that has bookings, and taps a day
@@ -461,7 +462,9 @@ class _AdminAppointmentCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final service = SalonService.byId(appointment.serviceId);
+    final service = context
+        .watch<CatalogueProvider>()
+        .byId(appointment.mainService?.serviceId);
 
     return SoftCard(
       padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
@@ -508,7 +511,7 @@ class _AdminAppointmentCard extends StatelessWidget {
                 InfoRow(
                   icon: Icons.spa_outlined,
                   label: l10n.labelService,
-                  value: service?.name(l10n) ?? l10n.serviceNotSelected,
+                  value: service?.localisedName(context) ?? l10n.serviceNotSelected,
                 ),
               ],
             ),

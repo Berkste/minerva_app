@@ -21,6 +21,46 @@ class SlotInThePastException extends BookingException {
   const SlotInThePastException();
 }
 
+/// The customer already has an appointment within three weeks of this one.
+///
+/// The salon takes each customer roughly once every 21 days. Enforced by the
+/// database (`MN002`), because a rule only kept in the app is not a rule.
+///
+/// [nextAvailable] is the earliest day that would be accepted, when the
+/// database was able to say.
+class BookingWindowException extends BookingException {
+  const BookingWindowException({this.existingDate, this.nextAvailable});
+
+  /// The appointment that stands in the way.
+  final DateTime? existingDate;
+
+  /// The first day that would be free of it.
+  final DateTime? nextAvailable;
+}
+
+/// The salon is shut that day — a Sunday, or a declared holiday.
+class SalonClosedException extends BookingException {
+  const SalonClosedException();
+}
+
+/// Too late to call it off.
+///
+/// A customer may cancel until an hour before the appointment starts. After
+/// that the slot is theirs, and only the salon can release it.
+class CancelTooLateException extends BookingException {
+  const CancelTooLateException();
+}
+
+/// The name given does not match the one held against that phone number.
+///
+/// Raised when somebody claims a customer record. It is the only thing
+/// standing between a phone number and the record behind it, so the app must
+/// not soften it into a generic failure — but it must also not confirm that a
+/// record exists.
+class NameDoesNotMatchException extends BookingException {
+  const NameDoesNotMatchException();
+}
+
 /// No usable connection to Supabase.
 class BookingOfflineException extends BookingException {
   const BookingOfflineException();

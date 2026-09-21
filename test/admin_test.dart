@@ -9,6 +9,7 @@ import 'package:minerva_app/models/appointment.dart';
 import 'package:minerva_app/models/slot.dart';
 import 'package:minerva_app/providers/admin_provider.dart';
 import 'package:minerva_app/providers/appointment_provider.dart' show LoadState;
+import 'package:minerva_app/providers/catalogue_provider.dart';
 import 'package:minerva_app/services/booking_exception.dart';
 import 'package:minerva_app/services/booking_repository.dart';
 
@@ -69,7 +70,7 @@ void main() {
 
     test('a real staff login authenticates and loads the month', () async {
       final repo = FakeBookingRepository()
-        ..bookAsSomeoneElse(slotOn(now.day, 14), otherUserId: 'cust-A');
+        ..bookAsSomeoneElse(slotOn(now.day, 14), phone: '5550000001');
       final provider = await signedInAdmin(repo);
 
       expect(provider.auth, AdminAuthState.authenticated);
@@ -80,7 +81,7 @@ void main() {
   group('Admin data access', () {
     test('a non-admin caller reads none of the salon-wide list', () async {
       final repo = FakeBookingRepository()
-        ..bookAsSomeoneElse(slotOn(now.day, 14), otherUserId: 'cust-A');
+        ..bookAsSomeoneElse(slotOn(now.day, 14), phone: '5550000001');
 
       // No admin sign-in — mirrors RLS returning zero rows to a customer.
       final first = DateTime(now.year, now.month);
@@ -90,22 +91,23 @@ void main() {
 
     test('an admin sees every customer\'s appointment in the month', () async {
       final repo = FakeBookingRepository()
-        ..bookAsSomeoneElse(slotOn(now.day, 10), otherUserId: 'cust-A')
-        ..bookAsSomeoneElse(slotOn(now.day, 12), otherUserId: 'cust-B');
+        ..bookAsSomeoneElse(slotOn(now.day, 10), phone: '5550000001')
+        ..bookAsSomeoneElse(slotOn(now.day, 12), phone: '5550000002');
       final provider = await signedInAdmin(repo);
 
       final owners = provider
           .appointmentsOn(dayInThisMonth(now.day))
-          .map((a) => a.userId)
+          .map((a) => a.phone)
           .toSet();
-      expect(owners, containsAll(<String>{'cust-A', 'cust-B'}));
+      expect(owners, containsAll(<String>{'5550000001', '5550000002'}));
     });
 
     test('a non-admin cannot cancel a booking they do not own', () async {
       final repo = FakeBookingRepository();
-      final other = repo.bookAsSomeoneElse(slotOn(now.day, 14), otherUserId: 'cust-A');
+      final other = repo.bookAsSomeoneElse(slotOn(now.day, 14), phone: '5550000001');
 
-      await repo.adminCancel(other.id); // no admin session
+      // No admin session: RLS would refuse, and so does the fake.
+      await repo.adminSetStatus(other.id, AppointmentStatus.cancelled);
 
       expect(repo.appointments.single.status, AppointmentStatus.confirmed,
           reason: 'RLS would refuse; the fake refuses too');
@@ -114,7 +116,7 @@ void main() {
     test('an admin can cancel any booking, freeing the slot', () async {
       final slot = slotOn(now.day, 14);
       final repo = FakeBookingRepository();
-      final other = repo.bookAsSomeoneElse(slot, otherUserId: 'cust-A');
+      final other = repo.bookAsSomeoneElse(slot, phone: '5550000001');
       final provider = await signedInAdmin(repo);
 
       await provider.cancel(other.id);
@@ -128,7 +130,7 @@ void main() {
 
     test('sign out drops the session and the loaded schedule', () async {
       final repo = FakeBookingRepository()
-        ..bookAsSomeoneElse(slotOn(now.day, 14), otherUserId: 'cust-A');
+        ..bookAsSomeoneElse(slotOn(now.day, 14), phone: '5550000001');
       final provider = await signedInAdmin(repo);
       expect(provider.appointmentsOn(dayInThisMonth(now.day)), isNotEmpty);
 
@@ -155,23 +157,23 @@ void main() {
       final a = now.day <= 27 ? now.day : 1;
       final b = a == 1 ? 2 : 1;
       final repo = FakeBookingRepository()
-        ..bookAsSomeoneElse(slotOn(a, 10), otherUserId: 'cust-A')
-        ..bookAsSomeoneElse(slotOn(b, 12), otherUserId: 'cust-B');
+        ..bookAsSomeoneElse(slotOn(a, 10), phone: '5550000001')
+        ..bookAsSomeoneElse(slotOn(b, 12), phone: '5550000002');
       final provider = await signedInAdmin(repo);
 
       provider.selectDay(dayInThisMonth(a));
       expect(provider.selectedDayAppointments.length, 1);
-      expect(provider.selectedDayAppointments.single.userId, 'cust-A');
+      expect(provider.selectedDayAppointments.single.phone, '5550000001');
 
       provider.selectDay(dayInThisMonth(b));
-      expect(provider.selectedDayAppointments.single.userId, 'cust-B');
+      expect(provider.selectedDayAppointments.single.phone, '5550000002');
     });
 
     test('days with appointments are marked, others are not', () async {
       final marked = now.day <= 27 ? now.day : 1;
       final unmarked = marked == 1 ? 2 : 1;
       final repo = FakeBookingRepository()
-        ..bookAsSomeoneElse(slotOn(marked, 10), otherUserId: 'cust-A');
+        ..bookAsSomeoneElse(slotOn(marked, 10), phone: '5550000001');
       final provider = await signedInAdmin(repo);
 
       expect(provider.daysWithAppointments, contains(dayInThisMonth(marked)));
@@ -182,7 +184,7 @@ void main() {
     test('a cancelled booking loses its day marker', () async {
       final slot = slotOn(now.day, 14);
       final repo = FakeBookingRepository();
-      final other = repo.bookAsSomeoneElse(slot, otherUserId: 'cust-A');
+      final other = repo.bookAsSomeoneElse(slot, phone: '5550000001');
       final provider = await signedInAdmin(repo);
       expect(provider.daysWithAppointments, contains(slot.date));
 
@@ -193,7 +195,7 @@ void main() {
 
     test('a failed month load surfaces, and retry reloads', () async {
       final repo = FakeBookingRepository()
-        ..bookAsSomeoneElse(slotOn(now.day, 14), otherUserId: 'cust-A');
+        ..bookAsSomeoneElse(slotOn(now.day, 14), phone: '5550000001');
       final provider = await signedInAdmin(repo);
       expect(provider.listState, LoadState.ready);
 
@@ -211,7 +213,10 @@ void main() {
   group('Admin UI', () {
     Widget wrap(FakeBookingRepository repo, {Locale locale = const Locale('en')}) {
       return MultiProvider(
-        providers: [Provider<BookingRepository>.value(value: repo)],
+        providers: [
+          Provider<BookingRepository>.value(value: repo),
+          ChangeNotifierProvider(create: (_) => CatalogueProvider(repo)..load()),
+        ],
         child: MaterialApp(
           locale: locale,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -230,7 +235,7 @@ void main() {
       addTearDown(tester.view.reset);
 
       final repo = FakeBookingRepository()
-        ..bookAsSomeoneElse(slotOn(now.day, 10), otherUserId: 'cust-A');
+        ..bookAsSomeoneElse(slotOn(now.day, 10), phone: '5550000001');
 
       await tester.pumpWidget(wrap(repo));
       await tester.pumpAndSettle();

@@ -1,78 +1,152 @@
 import '../models/appointment.dart';
-import '../models/profile.dart';
+import '../models/customer.dart';
+import '../models/salon_closure.dart';
+import '../models/salon_service.dart';
 import '../models/slot.dart';
 
 /// Everything the app needs from the backend.
 ///
 /// An interface rather than a concrete class so the whole booking flow can be
-/// driven by an in-memory fake in tests — including the double-booking race,
-/// which is otherwise awkward to reproduce.
+/// driven by an in-memory fake in tests — including the double-booking race
+/// and the 21-day window, both of which are otherwise awkward to reproduce.
 abstract interface class BookingRepository {
-  /// Id of the signed-in user, or null before sign-in completes.
+  /// Id of the signed-in device session, or null before sign-in.
+  ///
+  /// A session is a device, not a person. [currentCustomer] is the person.
   String? get currentUserId;
 
   /// Signs in anonymously if there is no session yet. Safe to call repeatedly.
+  ///
+  /// Deliberately not called at launch: opening the app must not write
+  /// anything. An identity appears when somebody books.
   Future<void> ensureSignedIn();
 
-  /// This device's bookings, soonest first.
-  Future<List<Appointment>> fetchMyAppointments();
+  // --- the person ----------------------------------------------------------
+
+  /// The customer this device is linked to, or null if it never booked.
+  Future<Customer?> currentCustomer();
+
+  /// Finds the person behind [phone], or creates them, and links this device.
+  ///
+  /// Throws [NameDoesNotMatchException] when a record exists for that number
+  /// under a different first name — the only check standing between a phone
+  /// number and the record behind it.
+  Future<Customer> claimCustomer({
+    required String firstName,
+    String? lastName,
+    required String phone,
+  });
+
+  /// Updates this device's own customer record.
+  Future<Customer> updateCustomer({
+    required String firstName,
+    String? lastName,
+    required String phone,
+  });
+
+  // --- browsing ------------------------------------------------------------
 
   /// Slots already taken between [from] and [to], inclusive.
   ///
   /// Returns slot keys for *everyone's* bookings — that is the point, so the
   /// grid can grey out unavailable times — but never any customer details.
+  /// Works without a session, so the calendar loads before anyone identifies
+  /// themselves.
   Future<Set<Slot>> fetchBookedSlots(DateTime from, DateTime to);
 
-  /// Writes the booking.
+  /// Days the salon is shut in that range: every Sunday, plus any declared
+  /// closure. Works without a session, for the same reason.
+  Future<Set<DateTime>> fetchClosedDays(DateTime from, DateTime to);
+
+  /// The treatments a customer can book, in the salon's own order.
+  Future<List<SalonService>> fetchTreatments();
+
+  // --- this device's bookings ---------------------------------------------
+
+  /// This customer's bookings, soonest first.
   ///
-  /// Throws [SlotTakenException] if another booking for the same slot has
-  /// already been committed.
+  /// A claimed record shows only future appointments unless this very device
+  /// made them — which is what limits the damage when somebody types a phone
+  /// number that is not theirs.
+  Future<List<Appointment>> fetchMyAppointments();
+
+  /// Books [slot], creating or claiming the customer in the same breath.
+  ///
+  /// One call, one transaction: identity, appointment and chosen treatment
+  /// together or not at all.
+  ///
+  /// Throws [SlotTakenException] when somebody else got there first,
+  /// [SlotInThePastException], [BookingWindowException], [SalonClosedException]
+  /// or [NameDoesNotMatchException] as the rules apply.
   Future<Appointment> book({
     required Slot slot,
     required String firstName,
-    required String lastName,
+    String? lastName,
     required String phone,
     String? serviceId,
   });
 
-  /// Marks a booking cancelled, which releases its slot for someone else.
+  /// Moves an existing booking to a different slot.
+  ///
+  /// Subject to the same rules as making one, and refused for a booking the
+  /// salon entered on the customer's behalf.
+  Future<Appointment> reschedule(String appointmentId, Slot slot);
+
+  /// Changes the treatment on an existing booking; null clears it.
+  Future<void> setTreatment(String appointmentId, String? serviceId);
+
+  /// Calls off a booking, which releases its slot.
+  ///
+  /// Throws [CancelTooLateException] within an hour of the start.
   Future<void> cancel(String appointmentId);
-
-  /// This device's saved contact details, or null while still a guest.
-  Future<Profile?> fetchProfile();
-
-  /// Creates or updates the profile — how a guest becomes a known customer.
-  Future<Profile> saveProfile({
-    required String firstName,
-    required String lastName,
-    required String phone,
-  });
 
   // --- Admin / employee ----------------------------------------------------
   // These succeed only for a caller the database recognises as staff. The
-  // authorization is enforced by RLS (the `is_admin()` policies), not by the
-  // app; the methods here are just how the admin screens reach it.
+  // authorization is enforced by RLS, not by the app; the methods here are
+  // just how the admin screens reach it.
 
   /// Signs in a staff member with email + password and confirms they are
   /// actually an admin.
-  ///
-  /// Throws [InvalidAdminCredentialsException] when the email/password is
-  /// wrong, and [NotAnAdminException] when the credentials are valid but the
-  /// account is not staff (in which case the session is dropped again).
   Future<void> adminSignIn({required String email, required String password});
 
-  /// True when the current session belongs to a staff member. Answered by the
-  /// database: RLS returns the caller's `admins` row only if they are one.
+  /// True when the current session belongs to a staff member.
   Future<bool> isCurrentUserAdmin();
 
-  /// Every confirmed appointment whose day falls between [from] and [to]
-  /// (inclusive), across all customers, soonest first. Past and future days
-  /// alike — the admin calendar shows any day. Returns rows only for a staff
-  /// caller (admin RLS policy).
+  /// Every booking whose day falls between [from] and [to] (inclusive), across
+  /// all customers, soonest first. Staff only.
   Future<List<Appointment>> fetchAppointmentsInRange(DateTime from, DateTime to);
 
-  /// Cancels any customer's appointment, releasing its slot. Staff-only.
-  Future<void> adminCancel(String appointmentId);
+  /// Books on a customer's behalf, creating the person if that phone number is
+  /// new. Exempt from the 21-day window and from closed days.
+  Future<Appointment> adminBook({
+    required Slot slot,
+    required String firstName,
+    String? lastName,
+    required String phone,
+    String? serviceId,
+  });
+
+  /// Sets any booking's status: cancelled, completed, or a no-show.
+  ///
+  /// Marking a no-show is not only a label — it releases that customer from
+  /// the 21-day window, so the screen offering it should say so.
+  Future<void> adminSetStatus(String appointmentId, AppointmentStatus status);
+
+  /// The closures staff have declared that touch [from]..[to].
+  ///
+  /// Sundays are not among them: they are a standing rule, not a decision, and
+  /// [fetchClosedDays] is what folds the two together for the calendar.
+  Future<List<SalonClosure>> fetchClosures(DateTime from, DateTime to);
+
+  /// Declares a closure. A single day off has [from] equal to [to].
+  Future<SalonClosure> addClosure({
+    required DateTime from,
+    required DateTime to,
+    String? reason,
+  });
+
+  /// Retires a closure, reopening those days.
+  Future<void> removeClosure(String closureId);
 
   /// Ends the staff session.
   Future<void> adminSignOut();

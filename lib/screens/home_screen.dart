@@ -12,6 +12,7 @@ import '../widgets/common.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/minerva_logo.dart';
 import 'booking/calendar_screen.dart';
+import '../providers/catalogue_provider.dart';
 
 /// Landing tab: brand hero, the primary "New Appointment" action, and a
 /// preview of whatever the customer has coming up next.
@@ -387,21 +388,25 @@ class _ServiceStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
 
     // The strip is a horizontal list, so its height must be fixed — grow it
     // with the user's text size or the two-line service name clips.
     final textScale = MediaQuery.textScalerOf(context).scale(1);
+    final treatments = context.watch<CatalogueProvider>().treatments;
+
+    // Nothing to show until the catalogue arrives; the rest of the home screen
+    // is useful without it, so it simply takes up no room in the meantime.
+    if (treatments.isEmpty) return const SizedBox.shrink();
 
     return SizedBox(
       height: 124 * textScale.clamp(1.0, 1.4),
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: EdgeInsets.zero,
-        itemCount: SalonService.catalogue.length,
+        itemCount: treatments.length,
         separatorBuilder: (_, _) => const SizedBox(width: 12),
         itemBuilder: (context, index) {
-          final service = SalonService.catalogue[index];
+          final service = treatments[index];
           return SizedBox(
             width: 132,
             child: SoftCard(
@@ -428,7 +433,7 @@ class _ServiceStrip extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        service.name(l10n),
+                        service.localisedName(context),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.bodyMedium?.copyWith(

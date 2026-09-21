@@ -125,10 +125,34 @@ class AdminProvider extends ChangeNotifier {
   }
 
   /// Cancels any customer's appointment and drops it from the loaded month.
-  Future<void> cancel(String appointmentId) async {
-    await _repository.adminCancel(appointmentId);
-    _monthAppointments =
-        _monthAppointments.where((a) => a.id != appointmentId).toList();
+  ///
+  /// Staff are not bound by the hour-before deadline a customer has: the salon
+  /// is the one who knows the chair is free.
+  Future<void> cancel(String appointmentId) =>
+      setStatus(appointmentId, AppointmentStatus.cancelled);
+
+  /// Marks a booking as it actually went.
+  ///
+  /// Two of these change more than a label. Cancelling frees the slot, and a
+  /// no-show frees both the slot *and* that customer's 21-day window — the
+  /// person did not come, so they are not held to having been.
+  Future<void> setStatus(
+    String appointmentId,
+    AppointmentStatus status,
+  ) async {
+    await _repository.adminSetStatus(appointmentId, status);
+
+    if (status == AppointmentStatus.cancelled) {
+      // A cancelled booking leaves the schedule entirely; the day should stop
+      // showing a marker for it.
+      _monthAppointments =
+          _monthAppointments.where((a) => a.id != appointmentId).toList();
+    } else {
+      _monthAppointments = _monthAppointments
+          .map((a) => a.id == appointmentId ? a.copyWith(status: status) : a)
+          .toList();
+    }
+
     notifyListeners();
   }
 
