@@ -448,15 +448,23 @@ Eski üç migration dosyası ve `03_production_reset.sql` kaldırıldı (git ge�
 - `FakeBookingRepository` beş kuralı da taklit ediyor, testler bunun üzerinden
 - **250/250 test geçiyor**, `flutter analyze` temiz
 
-### 🔴 SENİN SIRAN — SQL'i çalıştır
+### ✅ Şema canlıda — 2026-09-23
 
-**→ `supabase/CANLIYA_CIKIS.md`**
+Göç uygulandı ve doğrulandı. `01_schema_audit.sql` **sıfır FAIL** döndürüyor: yedi
+tablo, üç enum, sekiz trigger, on bir fonksiyon, yirmi altı politika.
 
-Uygulama kodu artık yeni şemayı bekliyor; SQL çalıştırılmadan canlı veritabanına
-bağlanamaz. Adımlar: boşluk kontrolü → `04_faz2_reset.sql` Section 1 → iki migration
-→ admin satırını geri ekle → `01_schema_audit.sql` (sıfır FAIL) → `02_data_audit.sql`.
+İlk uygulamada iki trigger (`appointments_enforce_window`,
+`appointments_reject_closed`) oluşmamıştı — fonksiyonları vardı ama onları çağıran
+trigger'lar yoktu, yani 21 gün ve kapalı gün kuralları sessizce uygulanmıyordu.
+`05_missing_triggers.sql` ile düzeltildi. Şema dosyası artık her trigger'ı
+oluşturmadan önce düşürüyor, böylece yarım kalmış bir kurulum dosyayı yeniden
+çalıştırarak onarılabiliyor.
 
-### Sırada — Faz 3 ve 4 (ekranlar)
+Denetimdeki beş "unexpected security definer function" uyarısı scriptin kendi
+hatasıydı (`pg_get_function_identity_arguments` parametre adlarını da döndürüyor);
+düzeltildi, güncel dosya temiz dönecek.
+
+### 🔴 SIRADA — Faz 3 ve 4 (ekranlar)
 
 Faz 2 çekirdeği bitirdi; kalan iş arayüz:
 - **Faz 3 müşteri:** takvimde dolu/boş + kapalı gün gösterimi, profil düzenleme
