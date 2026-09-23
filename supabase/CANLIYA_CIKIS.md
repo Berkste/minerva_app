@@ -104,6 +104,23 @@ kontrol ediyor — sadece tabloların varlığını değil:
 - Hiçbir tabloda DELETE politikası yok mu *(soft delete kuralı)*
 - `anon` yalnızca `booked_slots` ve `closed_days` çağırabiliyor mu
 
+### 5b. İki trigger eksikse — 2026-09-23'te öyle oldu
+
+İlk denetim şu ikisini `MISSING` döndürdü:
+
+```
+FAIL  5. triggers  appointments_enforce_window   MISSING
+FAIL  5. triggers  appointments_reject_closed    MISSING
+```
+
+Fonksiyonlar oluşmuştu, onları çağıran trigger'lar oluşmamıştı — yani 21 gün ve
+kapalı gün kuralları **uygulanmıyordu**. Sebebi kesin olarak bilinmiyor; şema
+dosyası artık her trigger'ı oluşturmadan önce düşürdüğü için dosyayı yeniden
+çalıştırmak bu durumu onarır.
+
+Daha küçük çözüm: **`supabase/checks/05_missing_triggers.sql`** çalıştır, sonra
+denetimi tekrarla.
+
 ### 6. Veriyi gözden geçir
 
 `supabase/checks/02_data_audit.sql` → bölüm bölüm çalıştır. **1. sorgu boş

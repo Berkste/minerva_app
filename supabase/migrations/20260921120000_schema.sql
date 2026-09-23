@@ -595,6 +595,11 @@ $$;
 -- ===========================================================================
 -- Rules, as triggers
 -- ===========================================================================
+-- Each `create trigger` is preceded by a `drop trigger if exists`, so this
+-- section can be re-run on its own. That is not decoration: an apply that
+-- half-lands leaves functions without the triggers that call them, and a rule
+-- whose trigger is missing is a rule that silently is not enforced. Running
+-- the file again must be able to fix that.
 -- Each rule raises its own SQLSTATE so the app can tell the customer exactly
 -- which one they hit. PostgREST passes the code through in the error body and
 -- maps anything it does not recognise to HTTP 400, which is the same status a
@@ -629,6 +634,7 @@ begin
 end;
 $$;
 
+drop trigger if exists appointments_stamp_origin on public.appointments;
 create trigger appointments_stamp_origin
   before insert on public.appointments
   for each row execute function public.stamp_appointment_origin();
@@ -660,6 +666,7 @@ begin
 end;
 $$;
 
+drop trigger if exists appointments_reject_past on public.appointments;
 create trigger appointments_reject_past
   before insert or update on public.appointments
   for each row execute function public.reject_past_appointments();
@@ -729,6 +736,7 @@ begin
 end;
 $$;
 
+drop trigger if exists appointments_enforce_window on public.appointments;
 create trigger appointments_enforce_window
   before insert or update on public.appointments
   for each row execute function public.enforce_booking_window();
@@ -776,6 +784,7 @@ begin
 end;
 $$;
 
+drop trigger if exists appointments_reject_closed on public.appointments;
 create trigger appointments_reject_closed
   before insert or update on public.appointments
   for each row execute function public.reject_closed_days();
@@ -820,6 +829,7 @@ begin
 end;
 $$;
 
+drop trigger if exists appointments_enforce_cancel_deadline on public.appointments;
 create trigger appointments_enforce_cancel_deadline
   before update on public.appointments
   for each row execute function public.enforce_cancel_deadline();
@@ -828,14 +838,17 @@ create trigger appointments_enforce_cancel_deadline
 -- updated_at upkeep
 -- ---------------------------------------------------------------------------
 
+drop trigger if exists customers_touch_updated_at on public.customers;
 create trigger customers_touch_updated_at
   before update on public.customers
   for each row execute function public.touch_updated_at();
 
+drop trigger if exists appointments_touch_updated_at on public.appointments;
 create trigger appointments_touch_updated_at
   before update on public.appointments
   for each row execute function public.touch_updated_at();
 
+drop trigger if exists services_touch_updated_at on public.services;
 create trigger services_touch_updated_at
   before update on public.services
   for each row execute function public.touch_updated_at();

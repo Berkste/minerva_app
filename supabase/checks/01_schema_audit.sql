@@ -502,26 +502,31 @@ c_extra_tables as (
 ),
 
 c_extra_definers as (
+  -- Matched on name alone, deliberately. The obvious thing — building a
+  -- signature from pg_get_function_identity_arguments — does not work here,
+  -- because that function includes parameter *names* as well as types, so
+  -- every function that takes an argument fails to match a signature written
+  -- with types only. Names are unique enough in this schema, and a check that
+  -- cries wolf about five expected functions is worse than no check.
   select 'WARN', '9. leftovers',
          'unexpected security definer function ' || p.proname,
          'definer functions bypass RLS — confirm this one is meant to exist'
   from pg_proc p
   join pg_namespace n on n.oid = p.pronamespace
   where n.nspname = 'public' and p.prosecdef
-    and format('public.%s(%s)', p.proname, pg_get_function_identity_arguments(p.oid))
-        not in (
-          'public.is_admin()',
-          'public.current_customer_id()',
-          'public.claim_customer(text, text, text)',
-          'public.book_appointment(text, text, text, date, smallint, text)',
-          'public.set_appointment_service(uuid, text)',
-          'public.booked_slots(date, date)',
-          'public.closed_days(date, date)',
-          'public.stamp_appointment_origin()',
-          'public.enforce_booking_window()',
-          'public.reject_closed_days()',
-          'public.enforce_cancel_deadline()'
-        )
+    and p.proname not in (
+      'is_admin',
+      'current_customer_id',
+      'claim_customer',
+      'book_appointment',
+      'set_appointment_service',
+      'booked_slots',
+      'closed_days',
+      'stamp_appointment_origin',
+      'enforce_booking_window',
+      'reject_closed_days',
+      'enforce_cancel_deadline'
+    )
 ),
 
 all_checks(status, area, check_name, detail) as (
