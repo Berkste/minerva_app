@@ -58,3 +58,7 @@ windows/flutter/generated_plugins.cmake
 
 # Documentation screenshot, kept locally rather than in the repository.
 minerva_app_doc.png
+
+# Obsidian's per-vault settings, including window layout. Local to whoever
+# opened the repo in it.
+.obsidian/
