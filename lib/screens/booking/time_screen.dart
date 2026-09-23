@@ -5,12 +5,15 @@ import '../../l10n/app_localizations.dart';
 import '../../models/appointment.dart';
 import '../../models/slot.dart';
 import '../../providers/availability_provider.dart';
+import '../../utils/error_messages.dart';
+import '../../services/booking_exception.dart';
+import '../../providers/appointment_provider.dart';
 import '../../providers/booking_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/formatting.dart';
 import '../../widgets/common.dart';
 import '../../widgets/gradient_button.dart';
-import 'details_screen.dart';
+import 'service_screen.dart';
 
 /// Step 2 of 5 — pick a two-hour slot between 10:00 and 20:00.
 ///
@@ -35,6 +38,8 @@ class TimeScreen extends StatefulWidget {
 }
 
 class _TimeScreenState extends State<TimeScreen> {
+  bool _isSaving = false;
+
   @override
   void initState() {
     super.initState();
@@ -46,6 +51,42 @@ class _TimeScreenState extends State<TimeScreen> {
     final date = context.read<BookingProvider>().date;
     if (date == null || !mounted) return;
     await context.read<AvailabilityProvider>().loadFor(date, force: force);
+  }
+
+  /// Saves a move. The rules that guard a new booking guard this one too — the
+  /// slot must be free, the day open, and the customer's three weeks up — so
+  /// the same failures can come back and are explained the same way.
+  Future<void> _saveReschedule() async {
+    final booking = context.read<BookingProvider>();
+    final appointments = context.read<AppointmentProvider>();
+    final availability = context.read<AvailabilityProvider>();
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context);
+
+    final id = booking.reschedulingId;
+    final slot = booking.slot;
+    if (id == null || slot == null) return;
+
+    setState(() => _isSaving = true);
+
+    try {
+      await appointments.reschedule(id, slot);
+      if (!mounted) return;
+
+      availability.markTaken(slot);
+      booking.reset();
+      messenger.showSnackBar(SnackBar(content: Text(l10n.appointmentMoved)));
+      navigator.popUntil((route) => route.isFirst);
+    } on BookingException catch (failure) {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+
+      if (failure is SlotTakenException) availability.markTaken(slot);
+      messenger.showSnackBar(
+        SnackBar(content: Text(messageIn(context, failure))),
+      );
+    }
   }
 
   @override
@@ -145,16 +186,24 @@ class _TimeScreenState extends State<TimeScreen> {
               ),
             ),
             BottomActionBar(
-              child: GradientButton(
-                label: l10n.continueLabel,
-                onPressed: booking.hour == null
-                    ? null
-                    : () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const DetailsScreen(),
-                          ),
-                        ),
-              ),
+              child: _isSaving
+                  ? const SavingButton()
+                  : GradientButton(
+                // Moving a booking ends here: the day and the hour are the
+                // only things that change, so there is nothing further to ask.
+                      label: booking.isRescheduling
+                          ? l10n.saveChange
+                          : l10n.continueLabel,
+                      onPressed: booking.hour == null
+                          ? null
+                          : booking.isRescheduling
+                              ? _saveReschedule
+                              : () => Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => const ServiceScreen(),
+                                    ),
+                                  ),
+                    ),
             ),
           ],
         ),

@@ -1,7 +1,18 @@
+import 'package:flutter/widgets.dart';
 import 'package:intl/intl.dart';
 
 import '../l10n/app_localizations.dart';
 import '../services/booking_exception.dart';
+
+/// [messageFor], for the common case where the screen has a context.
+///
+/// One of the messages spells a date, and the right language for that is the
+/// one the app is being read in — which only the context knows.
+String messageIn(BuildContext context, BookingException failure) => messageFor(
+      AppLocalizations.of(context),
+      failure,
+      localeName: Localizations.localeOf(context).languageCode,
+    );
 
 /// Turns a [BookingException] into something worth showing a customer.
 ///

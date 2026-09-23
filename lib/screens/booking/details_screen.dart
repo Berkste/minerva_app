@@ -8,7 +8,7 @@ import '../../theme/app_colors.dart';
 import '../../utils/phone_formatter.dart';
 import '../../widgets/common.dart';
 import '../../widgets/gradient_button.dart';
-import 'service_screen.dart';
+import 'review_screen.dart';
 
 /// Step 3 of 5 — who the appointment is for.
 class DetailsScreen extends StatefulWidget {
@@ -85,7 +85,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
         );
 
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const ServiceScreen()),
+      MaterialPageRoute(builder: (_) => const ReviewScreen()),
     );
   }
 
@@ -140,12 +140,15 @@ class _DetailsScreenState extends State<DetailsScreen> {
                       textCapitalization: TextCapitalization.words,
                       textInputAction: TextInputAction.next,
                       decoration: InputDecoration(
-                        labelText: l10n.lastName,
+                        labelText: l10n.lastNameOptional,
                         prefixIcon: const Icon(Icons.person_outline, size: 19),
                       ),
-                      validator: (value) => _validateName(
+                      // Optional: only a first name and a phone number are
+                      // needed to book, and the database agrees — last_name is
+                      // nullable. Still checked for length if it is filled in,
+                      // because a one-letter surname is a typo either way.
+                      validator: (value) => _validateOptionalName(
                         value,
-                        required: l10n.lastNameRequired,
                         tooShort: l10n.lastNameTooShort,
                       ),
                     ),
@@ -198,6 +201,17 @@ class _DetailsScreenState extends State<DetailsScreen> {
   }) {
     final text = value?.trim() ?? '';
     if (text.isEmpty) return required;
+    if (text.length < 2) return tooShort;
+    return null;
+  }
+
+  /// The surname may be left out entirely, but not left half-typed.
+  static String? _validateOptionalName(
+    String? value, {
+    required String tooShort,
+  }) {
+    final text = value?.trim() ?? '';
+    if (text.isEmpty) return null;
     if (text.length < 2) return tooShort;
     return null;
   }

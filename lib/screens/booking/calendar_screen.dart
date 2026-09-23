@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../../providers/availability_provider.dart';
 import '../../providers/booking_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/formatting.dart';
@@ -41,6 +42,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
       selected?.year ?? now.year,
       selected?.month ?? now.month,
     );
+
+    // Which days are full and which the salon is shut. One request for the
+    // whole month, fired after the first frame so it does not notify
+    // listeners mid-build.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadMonth());
+  }
+
+  void _loadMonth() {
+    if (!mounted) return;
+    context.read<AvailabilityProvider>().loadMonth(_visibleMonth);
   }
 
   /// True when [month] is at or before the current month, i.e. there is nothing
@@ -51,6 +62,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     setState(() {
       _visibleMonth = DateTime(_visibleMonth.year, _visibleMonth.month + delta);
     });
+    _loadMonth();
   }
 
   @override
@@ -59,6 +71,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final fmt = Fmt.of(context);
     final booking = context.watch<BookingProvider>();
     final selected = booking.date;
+    final availability = context.watch<AvailabilityProvider>();
 
     return Scaffold(
       appBar: AppBar(
@@ -99,12 +112,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           month: _visibleMonth,
                           today: _today,
                           selected: selected,
+                          availabilityOf: (date) =>
+                              availability.availabilityOf(date, today: _today),
                           onSelect: (date) =>
                               context.read<BookingProvider>().selectDate(date),
                         ),
+                        const SizedBox(height: 12),
+                        const _CalendarLegend(),
                       ],
                     ),
                   ),
+                  if (availability.isMonthUnverified) ...[
+                    const SizedBox(height: 12),
+                    _CalendarNotice(text: l10n.monthAvailabilityUnavailable),
+                  ],
                   const SizedBox(height: 16),
                   _SelectedDateSummary(date: selected),
                 ],
@@ -225,12 +246,14 @@ class _MonthGrid extends StatelessWidget {
     required this.month,
     required this.today,
     required this.selected,
+    required this.availabilityOf,
     required this.onSelect,
   });
 
   final DateTime month;
   final DateTime today;
   final DateTime? selected;
+  final DayAvailability Function(DateTime) availabilityOf;
   final ValueChanged<DateTime> onSelect;
 
   @override
@@ -255,14 +278,19 @@ class _MonthGrid extends StatelessWidget {
 
         final day = index - leadingBlanks + 1;
         final date = DateTime(month.year, month.month, day);
-        final isPast = date.isBefore(today);
+        final state = availabilityOf(date);
+
+        // A day with nothing free is not worth opening. Neither is a Sunday or
+        // a holiday — the database would refuse either, and being told no
+        // after three taps is worse than being shown it up front.
+        final bookable = state == DayAvailability.open;
 
         return _DayCell(
           day: day,
+          state: state,
           isSelected: isSameDay(date, selected),
           isToday: isSameDay(date, today),
-          isPast: isPast,
-          onTap: isPast ? null : () => onSelect(date),
+          onTap: bookable ? () => onSelect(date) : null,
         );
       },
     );
@@ -272,25 +300,32 @@ class _MonthGrid extends StatelessWidget {
 class _DayCell extends StatelessWidget {
   const _DayCell({
     required this.day,
+    required this.state,
     required this.isSelected,
     required this.isToday,
-    required this.isPast,
     required this.onTap,
   });
 
   final int day;
+  final DayAvailability state;
   final bool isSelected;
   final bool isToday;
-  final bool isPast;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    // Three ways of being unavailable, drawn differently on purpose: a past
+    // day is simply gone, a full day is struck through because something is
+    // already there, and a closed day is flat because nothing ever will be.
     final Color textColor;
     if (isSelected) {
       textColor = Colors.white;
-    } else if (isPast) {
+    } else if (state == DayAvailability.past) {
       textColor = AppColors.textTertiary.withValues(alpha: 0.5);
+    } else if (state == DayAvailability.closed) {
+      textColor = AppColors.textTertiary.withValues(alpha: 0.65);
+    } else if (state == DayAvailability.full) {
+      textColor = AppColors.textSecondary;
     } else {
       textColor = AppColors.textPrimary;
     }
@@ -306,6 +341,9 @@ class _DayCell extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: isSelected ? AppColors.primaryGradient : null,
+            color: !isSelected && state == DayAvailability.closed
+                ? AppColors.textTertiary.withValues(alpha: 0.08)
+                : null,
             // Today is marked with a ring, so it reads even when another day
             // is the selected one.
             border: isToday && !isSelected
@@ -322,6 +360,10 @@ class _DayCell extends StatelessWidget {
                   color: textColor,
                   fontWeight:
                       isSelected || isToday ? FontWeight.w600 : FontWeight.w400,
+                  decoration: state == DayAvailability.full && !isSelected
+                      ? TextDecoration.lineThrough
+                      : null,
+                  decorationColor: AppColors.textTertiary,
                 ),
           ),
         ),
@@ -366,6 +408,98 @@ class _SelectedDateSummary extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Says what the marks on the grid mean. Two of them take days out of play, so
+/// the customer should not have to infer which is which.
+class _CalendarLegend extends StatelessWidget {
+  const _CalendarLegend();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+
+    Widget entry(Widget sample, String label) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            sample,
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontSize: 11.5,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        );
+
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 18,
+      runSpacing: 6,
+      children: [
+        entry(
+          Text(
+            '12',
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontSize: 11.5,
+              color: AppColors.textSecondary,
+              decoration: TextDecoration.lineThrough,
+              decorationColor: AppColors.textTertiary,
+            ),
+          ),
+          l10n.dayFull,
+        ),
+        entry(
+          Container(
+            width: 16,
+            height: 16,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.textTertiary.withValues(alpha: 0.08),
+            ),
+          ),
+          l10n.dayClosed,
+        ),
+      ],
+    );
+  }
+}
+
+/// A quiet line for when the month's availability could not be fetched. The
+/// calendar still works; it just cannot mark anything.
+class _CalendarNotice extends StatelessWidget {
+  const _CalendarNotice({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(
+          Icons.info_outline_rounded,
+          size: 15,
+          color: AppColors.textTertiary,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

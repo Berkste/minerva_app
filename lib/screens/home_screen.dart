@@ -88,7 +88,7 @@ class HomeScreen extends StatelessWidget {
               // Never claim "no appointments" when the truth is "could not
               // ask" — the customer may well have one.
               _LoadFailedCard(
-                message: messageFor(l10n, appointments.error!),
+                message: messageIn(context, appointments.error!),
                 onRetry: appointments.load,
               )
             else if (next == null)

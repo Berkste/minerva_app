@@ -9,6 +9,7 @@ import '../theme/app_colors.dart';
 import '../utils/formatting.dart';
 import '../widgets/common.dart';
 import '../widgets/minerva_logo.dart';
+import 'edit_profile_screen.dart';
 
 /// Profile tab.
 ///
@@ -80,6 +81,18 @@ class ProfileScreen extends StatelessWidget {
                       ],
                     ),
                   ),
+                  // Only offered once there is something to edit. Before the
+                  // first booking there is no record — and creating one from
+                  // here would be the registration step this app deliberately
+                  // does not have.
+                  if (customer != null)
+                    IconButton(
+                      onPressed: () =>
+                          Navigator.of(context).push(EditProfileScreen.route()),
+                      icon: const Icon(Icons.edit_outlined, size: 19),
+                      color: AppColors.purple,
+                      tooltip: l10n.editProfile,
+                    ),
                 ],
               ),
             ),

@@ -242,6 +242,30 @@ abstract class AppLocalizations {
   /// **'Dolu'**
   String get slotBooked;
 
+  /// No description provided for @dayFull.
+  ///
+  /// In tr, this message translates to:
+  /// **'Dolu'**
+  String get dayFull;
+
+  /// No description provided for @dayClosed.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kapalı'**
+  String get dayClosed;
+
+  /// No description provided for @calendarLegend.
+  ///
+  /// In tr, this message translates to:
+  /// **'Takvim'**
+  String get calendarLegend;
+
+  /// No description provided for @monthAvailabilityUnavailable.
+  ///
+  /// In tr, this message translates to:
+  /// **'Doluluk bilgisi alınamadı. Günler işaretlenmemiş olabilir.'**
+  String get monthAvailabilityUnavailable;
+
   /// No description provided for @continueLabel.
   ///
   /// In tr, this message translates to:
@@ -295,6 +319,12 @@ abstract class AppLocalizations {
   /// In tr, this message translates to:
   /// **'Lütfen adınızı girin.'**
   String get firstNameRequired;
+
+  /// No description provided for @lastNameOptional.
+  ///
+  /// In tr, this message translates to:
+  /// **'Soyad (isteğe bağlı)'**
+  String get lastNameOptional;
 
   /// No description provided for @lastNameRequired.
   ///
@@ -703,6 +733,54 @@ abstract class AppLocalizations {
   /// In tr, this message translates to:
   /// **'Bir şeyler ters gitti. Lütfen tekrar deneyin.'**
   String get somethingWentWrong;
+
+  /// No description provided for @saveChange.
+  ///
+  /// In tr, this message translates to:
+  /// **'Değişikliği kaydet'**
+  String get saveChange;
+
+  /// No description provided for @appointmentMoved.
+  ///
+  /// In tr, this message translates to:
+  /// **'Randevunuz taşındı.'**
+  String get appointmentMoved;
+
+  /// No description provided for @changeAppointment.
+  ///
+  /// In tr, this message translates to:
+  /// **'Randevuyu değiştir'**
+  String get changeAppointment;
+
+  /// No description provided for @editProfile.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bilgilerimi düzenle'**
+  String get editProfile;
+
+  /// No description provided for @profileSaved.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bilgileriniz kaydedildi.'**
+  String get profileSaved;
+
+  /// No description provided for @save.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kaydet'**
+  String get save;
+
+  /// No description provided for @change.
+  ///
+  /// In tr, this message translates to:
+  /// **'Değiştir'**
+  String get change;
+
+  /// No description provided for @profilePhoneNote.
+  ///
+  /// In tr, this message translates to:
+  /// **'Telefon numaranız sizi tanımlar; değiştirirseniz randevularınız yeni numarayla eşleşir. Geçmiş randevularınız alındıkları bilgilerle kalır.'**
+  String get profilePhoneNote;
 
   /// No description provided for @retry.
   ///

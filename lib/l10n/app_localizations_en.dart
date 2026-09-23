@@ -87,6 +87,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get slotBooked => 'Booked';
 
   @override
+  String get dayFull => 'Full';
+
+  @override
+  String get dayClosed => 'Closed';
+
+  @override
+  String get calendarLegend => 'Calendar';
+
+  @override
+  String get monthAvailabilityUnavailable =>
+      'Could not load availability. Days may be unmarked.';
+
+  @override
   String get continueLabel => 'Continue';
 
   @override
@@ -113,6 +126,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get firstNameRequired => 'Please enter your first name.';
+
+  @override
+  String get lastNameOptional => 'Surname (optional)';
 
   @override
   String get lastNameRequired => 'Please enter your last name.';
@@ -336,6 +352,31 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get somethingWentWrong => 'Something went wrong. Please try again.';
+
+  @override
+  String get saveChange => 'Save change';
+
+  @override
+  String get appointmentMoved => 'Your appointment has been moved.';
+
+  @override
+  String get changeAppointment => 'Change appointment';
+
+  @override
+  String get editProfile => 'Edit my details';
+
+  @override
+  String get profileSaved => 'Your details have been saved.';
+
+  @override
+  String get save => 'Save';
+
+  @override
+  String get change => 'Change';
+
+  @override
+  String get profilePhoneNote =>
+      'Your phone number is what identifies you; changing it moves your appointments with it. Past bookings keep the details they were made with.';
 
   @override
   String get retry => 'Try again';

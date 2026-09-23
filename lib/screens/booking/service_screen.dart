@@ -7,7 +7,7 @@ import '../../providers/booking_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/common.dart';
 import '../../widgets/gradient_button.dart';
-import 'review_screen.dart';
+import 'details_screen.dart';
 import '../../providers/catalogue_provider.dart';
 
 /// Step 4 of 5 — the optional treatment choice.
@@ -17,9 +17,9 @@ import '../../providers/catalogue_provider.dart';
 class ServiceScreen extends StatelessWidget {
   const ServiceScreen({super.key});
 
-  void _goToReview(BuildContext context) {
+  void _goToDetails(BuildContext context) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const ReviewScreen()),
+      MaterialPageRoute(builder: (_) => const DetailsScreen()),
     );
   }
 
@@ -81,7 +81,7 @@ class ServiceScreen extends StatelessWidget {
                     child: TextButton(
                       onPressed: () {
                         context.read<BookingProvider>().selectService(null);
-                        _goToReview(context);
+                        _goToDetails(context);
                       },
                       child: Text(l10n.skipThisStep),
                     ),
@@ -92,7 +92,7 @@ class ServiceScreen extends StatelessWidget {
             BottomActionBar(
               child: GradientButton(
                 label: l10n.continueLabel,
-                onPressed: () => _goToReview(context),
+                onPressed: () => _goToDetails(context),
               ),
             ),
           ],

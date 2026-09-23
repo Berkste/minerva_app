@@ -7,7 +7,6 @@ import '../../providers/appointment_provider.dart';
 import '../../providers/availability_provider.dart';
 import '../../providers/booking_provider.dart';
 import '../../services/booking_exception.dart';
-import '../../theme/app_colors.dart';
 import '../../utils/error_messages.dart';
 import '../../utils/formatting.dart';
 import '../../widgets/common.dart';
@@ -80,7 +79,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
       if (!mounted) return;
       setState(() => _isSaving = false);
       messenger.showSnackBar(
-        SnackBar(content: Text(messageFor(l10n, failure))),
+        SnackBar(content: Text(messageIn(context, failure))),
       );
     }
   }
@@ -183,40 +182,13 @@ class _ReviewScreenState extends State<ReviewScreen> {
             ),
             BottomActionBar(
               child: _isSaving
-                  ? const _SavingButton()
+                  ? const SavingButton()
                   : GradientButton(
                       label: l10n.confirmAppointment,
                       onPressed: _confirm,
                     ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Same footprint as [GradientButton] so the bar does not jump while saving.
-class _SavingButton extends StatelessWidget {
-  const _SavingButton();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      height: 52,
-      decoration: BoxDecoration(
-        gradient: AppColors.primaryGradient,
-        borderRadius: BorderRadius.circular(26),
-      ),
-      child: const Center(
-        child: SizedBox(
-          width: 20,
-          height: 20,
-          child: CircularProgressIndicator(
-            strokeWidth: 2.2,
-            color: Colors.white,
-          ),
         ),
       ),
     );

@@ -12,6 +12,8 @@ import '../widgets/appointment_card.dart';
 import '../widgets/common.dart';
 import '../widgets/gradient_button.dart';
 import 'home_screen.dart';
+import '../providers/booking_provider.dart';
+import 'booking/calendar_screen.dart';
 
 /// Appointments tab: everything booked, upcoming first, past below.
 class AppointmentsScreen extends StatelessWidget {
@@ -63,10 +65,22 @@ class AppointmentsScreen extends StatelessWidget {
     try {
       await context.read<AppointmentProvider>().cancel(appointment.id);
     } on BookingException catch (failure) {
+      // The failure only exists after the await, so the message can only
+      // be built here — and only if this screen is still around to show it.
+      if (!context.mounted) return;
       messenger.showSnackBar(
-        SnackBar(content: Text(messageFor(l10n, failure))),
+        SnackBar(content: Text(messageIn(context, failure))),
       );
     }
+  }
+
+  /// Opens the calendar on the booking being moved. The flow from there is the
+  /// booking flow: same availability, same rules, same screens.
+  void _startReschedule(BuildContext context, Appointment appointment) {
+    context.read<BookingProvider>().beginReschedule(appointment);
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const CalendarScreen()),
+    );
   }
 
   @override
@@ -96,7 +110,7 @@ class AppointmentsScreen extends StatelessWidget {
               return EmptyState(
                 icon: Icons.cloud_off_rounded,
                 title: l10n.couldNotLoadAppointments,
-                message: messageFor(l10n, provider.error!),
+                message: messageIn(context, provider.error!),
                 action: SizedBox(
                   width: 180,
                   child: OutlineActionButton(
@@ -150,7 +164,17 @@ class AppointmentsScreen extends StatelessWidget {
                     AppointmentCard(
                       appointment: appointment,
                       title: l10n.upcomingAppointment,
-                      onCancel: () => _confirmCancel(context, appointment),
+                      // Both are hidden within the hour before the slot, and
+                      // for anything the salon booked on the customer's
+                      // behalf. The database refuses either case, and offering
+                      // a button that cannot work is how you teach somebody
+                      // the app is broken.
+                      onCancel: appointment.canBeCancelledByCustomer()
+                          ? () => _confirmCancel(context, appointment)
+                          : null,
+                      onChange: appointment.canBeChangedByCustomer()
+                          ? () => _startReschedule(context, appointment)
+                          : null,
                     ),
                     const SizedBox(height: 12),
                   ],

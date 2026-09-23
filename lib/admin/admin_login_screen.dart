@@ -126,7 +126,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                 const SizedBox(height: 16),
                 HintBanner(
                   icon: Icons.error_outline_rounded,
-                  text: messageFor(l10n, provider.authError!),
+                  text: messageIn(context, provider.authError!),
                 ),
               ],
 

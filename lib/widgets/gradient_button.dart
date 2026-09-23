@@ -131,3 +131,36 @@ class OutlineActionButton extends StatelessWidget {
     );
   }
 }
+
+/// The gradient button while its action is in flight.
+///
+/// Same footprint as [GradientButton] so the bar does not shift when one
+/// swaps for the other, and no label — a spinner under the word "Confirm"
+/// invites a second press on something already happening.
+class SavingButton extends StatelessWidget {
+  const SavingButton({super.key, this.height = 52});
+
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: height,
+      decoration: BoxDecoration(
+        gradient: AppColors.primaryGradient,
+        borderRadius: BorderRadius.circular(height / 2),
+      ),
+      child: const Center(
+        child: SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.2,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    );
+  }
+}

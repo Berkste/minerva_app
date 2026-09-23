@@ -18,6 +18,7 @@ class AppointmentCard extends StatelessWidget {
     this.title,
     this.isPast = false,
     this.onCancel,
+    this.onChange,
   });
 
   final Appointment appointment;
@@ -29,6 +30,10 @@ class AppointmentCard extends StatelessWidget {
   final bool isPast;
 
   final VoidCallback? onCancel;
+
+  /// Moving the booking to another day or hour. Absent when the salon entered
+  /// it, or when it is too close to the hour to change.
+  final VoidCallback? onChange;
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +62,11 @@ class AppointmentCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (onChange != null && !isPast)
+                    _CardAction(
+                      label: AppLocalizations.of(context).change,
+                      onPressed: onChange!,
+                    ),
                   if (onCancel != null && !isPast)
                     _CancelButton(onPressed: onCancel!),
                 ],
@@ -134,6 +144,30 @@ class _CancelButton extends StatelessWidget {
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
       tooltip: AppLocalizations.of(context).cancelAppointment,
+    );
+  }
+}
+
+/// A quiet text action on the card's header row. Deliberately lighter than
+/// the cancel button beside it: moving a booking is the reversible one.
+class _CardAction extends StatelessWidget {
+  const _CardAction({required this.label, required this.onPressed});
+
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton(
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        minimumSize: const Size(0, 32),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        foregroundColor: AppColors.purple,
+        textStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500),
+      ),
+      child: Text(label),
     );
   }
 }

@@ -464,15 +464,31 @@ Denetimdeki beş "unexpected security definer function" uyarısı scriptin kendi
 hatasıydı (`pg_get_function_identity_arguments` parametre adlarını da döndürüyor);
 düzeltildi, güncel dosya temiz dönecek.
 
-### 🔴 SIRADA — Faz 3 ve 4 (ekranlar)
+### Faz 3 — müşteri uygulaması (bitti)
 
-Faz 2 çekirdeği bitirdi; kalan iş arayüz:
-- **Faz 3 müşteri:** takvimde dolu/boş + kapalı gün gösterimi, profil düzenleme
-  ekranı, randevu değiştirme akışı, akış sırası düzeltmesi (işlem → ad/soyad)
-- **Faz 4 admin:** randevu oluşturma, işlem listesi düzenleme, `completed`/`no_show`
-  işaretleme, kişi listesi, hizmet/fiyat yönetimi, takvim kapatma, istatistik sayfası
+- **Takvim artık günleri işaretliyor:** dolu günler üstü çizili, Pazar ve ilan
+  edilmiş tatiller soluk ve tıklanamaz. Ay başına tek istek (`booked_slots` +
+  `closed_days` aralık alıyor), otuz değil
+- **Akış sırası düzeltildi:** saat → **işlem** → ad/soyad → onay. Şartnamenin
+  istediği sıra ve doğrusu da bu: işlem seçmek gezinmek, telefon yazmak taahhüt
+- **Soyad opsiyonel** — şema da öyle (`last_name` nullable). Boş bırakılabilir,
+  yarım bırakılamaz
+- **Profil düzenleme ekranı** (`edit_profile_screen.dart`). Geçmiş randevular
+  alındıkları bilgilerle kalıyor; kişi kaydı "şu an kim olduğu"
+- **Randevu değiştirme:** kart üzerinde "Değiştir", takvim ve saat ızgarasını
+  yeniden kullanıyor — aynı müsaitlik, aynı kurallar, ayrı ekran yok
+- **Kurallar arayüzde önden görünüyor:** iptal ve değiştir düğmeleri randevuya
+  1 saat kala ve salonun girdiği kayıtlarda hiç çıkmıyor; 21 gün hatası çakışan
+  tarihi ve en erken günü söylüyor
+- **269/269 test geçiyor** (+19 yeni), `flutter analyze` temiz
 
-Repository ve provider katmanı bu işlerin hepsini zaten destekliyor — eksik olan
+### 🔴 SIRADA — Faz 4 (admin ekranları)
+
+Randevu oluşturma (telefonla kişi arama) · işlem listesi düzenleme + tutar girişi ·
+`completed`/`no_show` işaretleme · kişi listesi · hizmet ve fiyat yönetimi ·
+takvim kapatma · istatistik sayfası.
+
+Repository ve provider katmanı bunların hepsini zaten destekliyor — eksik olan
 yalnızca ekranlar.
 
 ### Sonraya bırakılanlar

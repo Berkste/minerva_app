@@ -87,6 +87,19 @@ class AppLocalizationsTr extends AppLocalizations {
   String get slotBooked => 'Dolu';
 
   @override
+  String get dayFull => 'Dolu';
+
+  @override
+  String get dayClosed => 'Kapalı';
+
+  @override
+  String get calendarLegend => 'Takvim';
+
+  @override
+  String get monthAvailabilityUnavailable =>
+      'Doluluk bilgisi alınamadı. Günler işaretlenmemiş olabilir.';
+
+  @override
   String get continueLabel => 'Devam';
 
   @override
@@ -113,6 +126,9 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get firstNameRequired => 'Lütfen adınızı girin.';
+
+  @override
+  String get lastNameOptional => 'Soyad (isteğe bağlı)';
 
   @override
   String get lastNameRequired => 'Lütfen soyadınızı girin.';
@@ -338,6 +354,31 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get somethingWentWrong =>
       'Bir şeyler ters gitti. Lütfen tekrar deneyin.';
+
+  @override
+  String get saveChange => 'Değişikliği kaydet';
+
+  @override
+  String get appointmentMoved => 'Randevunuz taşındı.';
+
+  @override
+  String get changeAppointment => 'Randevuyu değiştir';
+
+  @override
+  String get editProfile => 'Bilgilerimi düzenle';
+
+  @override
+  String get profileSaved => 'Bilgileriniz kaydedildi.';
+
+  @override
+  String get save => 'Kaydet';
+
+  @override
+  String get change => 'Değiştir';
+
+  @override
+  String get profilePhoneNote =>
+      'Telefon numaranız sizi tanımlar; değiştirirseniz randevularınız yeni numarayla eşleşir. Geçmiş randevularınız alındıkları bilgilerle kalır.';
 
   @override
   String get retry => 'Tekrar dene';

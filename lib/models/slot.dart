@@ -10,6 +10,13 @@ import 'package:flutter/foundation.dart';
 /// mean the same thing everywhere.
 @immutable
 class Slot {
+  /// The start times the salon offers: 10:00 to 20:00, every two hours.
+  ///
+  /// Domain knowledge, not screen state, which is why it lives on the model
+  /// rather than on a provider. Must stay in step with the `slot_hour` check
+  /// constraint in the database.
+  static const List<int> salonHours = [10, 12, 14, 16, 18, 20];
+
   Slot(DateTime date, this.hour)
       : date = DateTime(date.year, date.month, date.day);
 

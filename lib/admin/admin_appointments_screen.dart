@@ -63,7 +63,10 @@ Future<void> _confirmCancel(
   try {
     await context.read<AdminProvider>().cancel(appointment.id);
   } on BookingException catch (failure) {
-    messenger.showSnackBar(SnackBar(content: Text(messageFor(l10n, failure))));
+    // The failure only exists after the await, so the message can only
+    // be built here — and only if this screen is still around to show it.
+    if (!context.mounted) return;
+    messenger.showSnackBar(SnackBar(content: Text(messageIn(context, failure))));
   }
 }
 
@@ -156,7 +159,7 @@ class _DayPanel extends StatelessWidget {
       return EmptyState(
         icon: Icons.cloud_off_rounded,
         title: l10n.adminCouldNotLoad,
-        message: messageFor(l10n, provider.listError!),
+        message: messageIn(context, provider.listError!),
         action: SizedBox(
           width: 180,
           child: OutlineActionButton(
