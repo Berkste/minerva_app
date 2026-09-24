@@ -130,12 +130,53 @@ dönmeli** (aynı slotta iki canlı randevu). 7. bölümde katalog özeti görü
 
 ## Bundan sonra
 
-Sırada Faz 3 ve 4 var: müşteri ve admin ekranlarının tamamlanması. Çekirdek hazır,
-eksik olan yalnızca arayüz — bu yüzden SQL çalıştıktan sonra uygulama temel akışı
-(gez → gün seç → saat seç → bilgi gir → randevu al) baştan sona yapabilir.
+Faz 2, 3 ve 4 tamamlandı: müşteri ve personel uygulamalarının tamamı yazıldı.
 
 `04_faz2_reset.sql` bu göçten sonra bir daha **çalıştırılmamalı** — ilk gerçek
 randevudan itibaren salonun kayıtlarını siler.
+
+---
+
+## Duman testi — hazır, senin onayınla
+
+Sen söylemeden yapmıyorum. Sıra geldiğinde listesi bu; her madde bir kuralı
+uçtan uca doğruluyor, ekranları gezmiyor.
+
+### Müşteri uygulaması
+
+1. **Hiçbir şey yazılmıyor:** uygulamayı aç, takvimi gez, **randevu alma**, kapat.
+   → `02_data_audit.sql` 2. sorgu: `customers` ve `appointments` **0** olmalı
+2. **Kapalı günler görünüyor:** takvimde Pazar soluk ve tıklanamaz olmalı
+3. **Randevu al:** ad + telefon (soyadı boş bırak) → kayıt oluşmalı
+   → `02` 2. sorgu: 1 müşteri, 1 randevu. Soyad `null`
+4. **21 gün kuralı:** aynı cihazdan bir hafta sonrasına ikinci randevu dene
+   → "Üç haftada bir randevu alabilirsiniz. En erken **[tarih]**" demeli — tarihi
+   söylemesi önemli, "şu an alamazsınız" demesi yeterli değil
+5. **İptal penceresi:** randevun bir saatten uzaksa "İptal" ve "Değiştir" görünür;
+   cihazın saatini randevuya yarım saat kalaya alırsan **ikisi de kaybolmalı**
+6. **Profil düzenleme:** soyadı ekle, kaydet → profilde görünmeli ama
+   **randevunun üstündeki isim değişmemeli**
+
+### Personel uygulaması
+
+7. **Giriş:** `admin@minerva.com.tr`
+8. **Gün takvimi:** 3. adımda aldığın randevu görünmeli
+9. **İşlem ve tutar:** randevuyu aç, bir ekstra ekle, tutarını değiştir
+   → kart üzerinde toplam görünmeli
+10. **Muafiyetler:** aynı kişiye iki gün sonrasına randevu gir → **geçmeli**
+    (müşteri geçemezdi). Bir Pazar'a randevu gir → **geçmeli**
+11. **Dolu slot:** 3. adımdaki randevunun tam saatine ikinci randevu gir
+    → **geçmemeli.** Bu, hiç kimsenin muaf olmadığı tek kural
+12. **Gelmedi:** randevuyu `no_show` işaretle → müşteri uygulamasından aynı kişi
+    hemen yeni randevu alabilmeli (kilit açılmalı)
+13. **İstatistik:** yapılan/gelmeyen sayıları ve kazanılan tutar tutmalı
+14. **Kapalı gün ilan et:** bir aralık kapat → müşteri takviminde soluk görünmeli
+
+### Test sonrası
+
+Duman testinde oluşan kayıtlar veritabanında kalır. Gerçek müşterilere açmadan
+önce temizlemek istersen `04_faz2_reset.sql` Section 1 + migration'ları yeniden
+çalıştırmak gerekir — **o an**, gerçek kimse girmeden.
 
 ---
 

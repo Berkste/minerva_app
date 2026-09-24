@@ -508,10 +508,30 @@ yazılı — düğmeye basan bunu sonradan keşfetmemeli.
 
 **289/289 test geçiyor** (+20 yeni), `flutter analyze` temiz.
 
-### 🔴 SIRADA — Faz 5 (doğrulama)
+### Faz 5 — doğrulama (bitti)
 
-Denetim scriptlerinin gözden geçirilmesi, ardından senin onayınla duman testi ve
-telefon testi.
+- **Admin ekranları render testine alındı** (`admin_render_test.dart`) ve hemen
+  gerçek bir hata buldu: küçük telefonda 1.3× yazı ölçeğinde gün takvimi ekrana
+  sığmıyordu (108 px taşma). Takvim artık gün listesiyle birlikte kayıyor —
+  sabitlenmiş ama sığmayan bir şey zaten taşar
+- **Denetim scripti ile şema karşılaştırıldı** (`schema_audit_consistency_test.dart`).
+  Bu ikisi bugüne kadar hiç karşılaştırılmamıştı; denetimin beklentileri elle
+  yazıldığı için şemaya eklenen bir policy sessizce denetimsiz kalabilir, daha
+  kötüsü şemada olmayan bir şeyi bekleyen bir kontrol sonsuza dek geçer. Artık
+  her `flutter test` bunu kontrol ediyor — 25 policy, 8 trigger, 7 tablo,
+  13 fonksiyon ve definer listesi örtüşüyor
+- **Duman testi listesi hazır** — `supabase/CANLIYA_CIKIS.md`. 14 madde, her biri
+  bir kuralı uçtan uca doğruluyor. **Senin onayın olmadan çalıştırılmayacak**
+
+**358/358 test geçiyor** (+69 bu fazda), `flutter analyze` temiz.
+
+### 🔴 SIRADA — sende
+
+1. **Duman testi** — istediğinde, `CANLIYA_CIKIS.md`'deki 14 maddelik liste
+2. **Telefon testi** — Android sideload, iOS TestFlight
+3. **Android upload keystore** — yükleme anında
+4. **iOS admin flavor'ı** — Mac mini oturumunda Xcode'da scheme + ayrı bundle id
+5. **Supabase ücretli plan** — telefon testiyle birlikte karara bağlanacak
 
 ### Sonraya bırakılanlar
 - **Duman testi** — Berk'in onayı olmadan yapılmayacak

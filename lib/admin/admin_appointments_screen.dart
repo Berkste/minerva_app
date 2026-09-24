@@ -171,35 +171,50 @@ class AdminAppointmentsScreen extends StatelessWidget {
         top: false,
         child: Column(
           children: [
-            // --- Calendar (fixed at the top) ------------------------------
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
-              child: SoftCard(
-                padding: const EdgeInsets.fromLTRB(12, 14, 12, 16),
+            // The calendar used to be pinned above a scrolling day list. It
+            // cannot be: on a small phone at the largest text size the month
+            // grid is taller than the screen on its own, and a pinned thing
+            // that does not fit simply overflows. Letting it scroll with the
+            // day costs a little convenience on big screens and fixes the
+            // layout on every screen.
+            Flexible(
+              child: SingleChildScrollView(
                 child: Column(
                   children: [
-                    _MonthHeader(
-                      label: fmt.monthYear(provider.visibleMonth),
-                      onPrevious: () => provider.showMonth(-1),
-                      onNext: () => provider.showMonth(1),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+                      child: SoftCard(
+                        padding: const EdgeInsets.fromLTRB(12, 14, 12, 16),
+                        child: Column(
+                          children: [
+                            _MonthHeader(
+                              label: fmt.monthYear(provider.visibleMonth),
+                              onPrevious: () => provider.showMonth(-1),
+                              onNext: () => provider.showMonth(1),
+                            ),
+                            const SizedBox(height: 14),
+                            _WeekdayRow(labels: fmt.weekdayLabels()),
+                            const SizedBox(height: 6),
+                            _AdminMonthGrid(
+                              month: provider.visibleMonth,
+                              today: today,
+                              selected: provider.selectedDay,
+                              markedDays: provider.daysWithAppointments,
+                              onSelect: provider.selectDay,
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 14),
-                    _WeekdayRow(labels: fmt.weekdayLabels()),
-                    const SizedBox(height: 6),
-                    _AdminMonthGrid(
-                      month: provider.visibleMonth,
-                      today: today,
-                      selected: provider.selectedDay,
-                      markedDays: provider.daysWithAppointments,
-                      onSelect: provider.selectDay,
-                    ),
+
+                    // --- The selected day's appointments --------------------------
+                    _DayPanel(today: today),
+                    // Room for the floating action button to sit over.
+                    const SizedBox(height: 72),
                   ],
                 ),
               ),
             ),
-
-            // --- The selected day's appointments --------------------------
-            Expanded(child: _DayPanel(today: today)),
           ],
         ),
       ),
@@ -269,21 +284,23 @@ class _DayPanel extends StatelessWidget {
             ],
           ),
         ),
-        Expanded(
-          child: appointments.isEmpty
-              ? _EmptyDay(message: l10n.adminNoAppointmentsOnDay)
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
-                  itemCount: appointments.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) => _AdminAppointmentCard(
-                    appointment: appointments[index],
-                    onCancel: () =>
-                        _confirmCancel(context, appointments[index]),
-                    onManage: () => _manage(context, appointments[index]),
-                  ),
-                ),
-        ),
+        // The panel sits inside the page's own scroll view now, so it takes
+        // the height it needs rather than claiming what is left.
+        if (appointments.isEmpty)
+          _EmptyDay(message: l10n.adminNoAppointmentsOnDay)
+        else
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+            itemCount: appointments.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 12),
+            itemBuilder: (context, index) => _AdminAppointmentCard(
+              appointment: appointments[index],
+              onCancel: () => _confirmCancel(context, appointments[index]),
+              onManage: () => _manage(context, appointments[index]),
+            ),
+          ),
       ],
     );
   }
