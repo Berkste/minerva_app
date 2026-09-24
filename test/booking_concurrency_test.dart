@@ -23,7 +23,19 @@ void main() {
   // Relative to the clock, never a fixed date: some of the tests below assert
   // the booking lands in `upcoming`, which filters on DateTime.now(), so a
   // hard-coded day silently starts failing once that day passes.
-  final slot = Slot(DateTime.now().add(const Duration(days: 7)), 14);
+  //
+  // And never a Sunday. The salon is shut on Sundays, so a date that drifts
+  // onto one turns a test about the booking window into a test about closed
+  // days — which is how these quietly started failing on a Thursday.
+  DateTime openDay(int daysFromNow) {
+    var day = DateTime.now().add(Duration(days: daysFromNow));
+    day = DateTime(day.year, day.month, day.day);
+    return day.weekday == DateTime.sunday
+        ? day.add(const Duration(days: 1))
+        : day;
+  }
+
+  final slot = Slot(openDay(7), 14);
 
   Future<AppointmentProvider> providerFor(FakeBookingRepository repo) async {
     final provider = AppointmentProvider(repo);
@@ -165,7 +177,7 @@ void main() {
       await bookAt(provider, slot);
 
       expect(
-        () => bookAt(provider, Slot(slot.date.add(const Duration(days: 7)), 10)),
+        () => bookAt(provider, Slot(_openAfter(slot.date, 7), 10)),
         throwsA(isA<BookingWindowException>()),
       );
     });
@@ -176,7 +188,7 @@ void main() {
       final repo = FakeBookingRepository();
       final provider = await providerFor(repo);
 
-      await bookAt(provider, Slot(slot.date.add(const Duration(days: 10)), 10));
+      await bookAt(provider, Slot(_openAfter(slot.date, 10), 10));
 
       expect(
         () => bookAt(provider, slot),
@@ -204,7 +216,7 @@ void main() {
       await bookAt(provider, slot);
 
       try {
-        await bookAt(provider, Slot(slot.date.add(const Duration(days: 3)), 10));
+        await bookAt(provider, Slot(_openAfter(slot.date, 3), 10));
         fail('expected the window to refuse this');
       } on BookingWindowException catch (failure) {
         // Without this the customer is told "not yet" and nothing else.
@@ -222,7 +234,7 @@ void main() {
 
       final second = await bookAt(
         provider,
-        Slot(slot.date.add(const Duration(days: 2)), 10),
+        Slot(_openAfter(slot.date, 2), 10),
       );
       expect(second.id, isNotEmpty);
     });
@@ -244,7 +256,7 @@ void main() {
 
       final second = await bookAt(
         provider,
-        Slot(slot.date.add(const Duration(days: 2)), 10),
+        Slot(_openAfter(slot.date, 2), 10),
       );
       expect(second.id, isNotEmpty);
     });
@@ -464,4 +476,15 @@ class _ProfileFailingRepository extends FakeBookingRepository {
   Future<Customer?> currentCustomer() async {
     throw const BookingFailedException('customer read failed');
   }
+}
+
+/// [base] plus [days], nudged off a Sunday the salon would refuse.
+///
+/// Nudging forward never takes a gap past 21 days here, so the booking window
+/// still means what each test says it means.
+DateTime _openAfter(DateTime base, int days) {
+  final day = base.add(Duration(days: days));
+  return day.weekday == DateTime.sunday
+      ? day.add(const Duration(days: 1))
+      : day;
 }

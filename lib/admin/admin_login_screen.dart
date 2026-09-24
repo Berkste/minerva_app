@@ -40,9 +40,9 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     await context.read<AdminProvider>().signIn(
-          email: _email.text,
-          password: _password.text,
-        );
+      email: _email.text,
+      password: _password.text,
+    );
     // Success flips the gate to the appointments screen automatically; failure
     // is surfaced below via authError. Nothing else to do here.
   }
@@ -90,8 +90,9 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                   labelText: l10n.adminEmail,
                   prefixIcon: const Icon(Icons.mail_outline, size: 19),
                 ),
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? l10n.adminEmailRequired : null,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? l10n.adminEmailRequired
+                    : null,
               ),
               const SizedBox(height: 16),
 
@@ -163,7 +164,10 @@ class _BusyButton extends StatelessWidget {
         child: SizedBox(
           width: 20,
           height: 20,
-          child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white),
+          child: CircularProgressIndicator(
+            strokeWidth: 2.2,
+            color: Colors.white,
+          ),
         ),
       ),
     );

@@ -242,7 +242,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get statusConfirmed => 'Confirmed';
 
   @override
-  String get statusCompleted => 'Completed';
+  String get statusCompleted => 'Done';
 
   @override
   String get addNewAppointment => 'Add New Appointment';
@@ -377,6 +377,169 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get profilePhoneNote =>
       'Your phone number is what identifies you; changing it moves your appointments with it. Past bookings keep the details they were made with.';
+
+  @override
+  String get adminMenu => 'Manage';
+
+  @override
+  String get adminCustomers => 'Customers';
+
+  @override
+  String get adminServices => 'Services and prices';
+
+  @override
+  String get adminClosures => 'Closed days';
+
+  @override
+  String get adminStats => 'Statistics';
+
+  @override
+  String get adminNewBooking => 'New appointment';
+
+  @override
+  String get markCompleted => 'Mark as done';
+
+  @override
+  String get markNoShow => 'Mark as no-show';
+
+  @override
+  String get markNoShowNote =>
+      'Marking a no-show releases this customer\'s three-week limit; they can book again straight away.';
+
+  @override
+  String get statusCancelled => 'Cancelled';
+
+  @override
+  String get statusNoShow => 'No-show';
+
+  @override
+  String get appointmentTotal => 'Total';
+
+  @override
+  String get appointmentServices => 'Work done';
+
+  @override
+  String get addExtra => 'Add service';
+
+  @override
+  String get removeLine => 'Remove';
+
+  @override
+  String get amountLabel => 'Amount';
+
+  @override
+  String get noLineItems => 'Nothing recorded yet.';
+
+  @override
+  String get customerSearchHint => 'Search by name or phone';
+
+  @override
+  String get archiveCustomer => 'Archive';
+
+  @override
+  String get restoreCustomer => 'Restore';
+
+  @override
+  String get showArchived => 'Show archived';
+
+  @override
+  String get archivedLabel => 'Archived';
+
+  @override
+  String get noCustomers => 'No customers found.';
+
+  @override
+  String get editCustomer => 'Edit customer';
+
+  @override
+  String get serviceTreatments => 'Treatments';
+
+  @override
+  String get serviceExtras => 'Extras';
+
+  @override
+  String get serviceInactive => 'Off the menu';
+
+  @override
+  String get editService => 'Edit service';
+
+  @override
+  String get priceMinLabel => 'Price';
+
+  @override
+  String get priceMaxLabel => 'Upper bound (if a range)';
+
+  @override
+  String get serviceNameTrLabel => 'Name (Turkish)';
+
+  @override
+  String get serviceNameEnLabel => 'Name (English)';
+
+  @override
+  String get closureAdd => 'Add closed days';
+
+  @override
+  String get closureFrom => 'From';
+
+  @override
+  String get closureTo => 'To';
+
+  @override
+  String get closureReason => 'Reason (optional)';
+
+  @override
+  String get noClosures => 'No closures declared.';
+
+  @override
+  String get closureRemoved => 'Closure removed.';
+
+  @override
+  String get sundayAlwaysClosed =>
+      'Sundays are already closed; there is no need to add them here.';
+
+  @override
+  String get statsThisMonth => 'This month';
+
+  @override
+  String get statsLastMonth => 'Last month';
+
+  @override
+  String get statsThisYear => 'This year';
+
+  @override
+  String get statsCompleted => 'Done';
+
+  @override
+  String get statsCancelled => 'Cancelled';
+
+  @override
+  String get statsNoShow => 'No-shows';
+
+  @override
+  String get statsRevenue => 'Earned';
+
+  @override
+  String get statsRevenueNote =>
+      'Only recorded amounts are counted. Appointments with nothing entered count as zero.';
+
+  @override
+  String get statsEmpty => 'No appointments in this period.';
+
+  @override
+  String get newBookingFor => 'For';
+
+  @override
+  String get newBookingSaved => 'Appointment created.';
+
+  @override
+  String get pickDay => 'Pick a day';
+
+  @override
+  String get pickHour => 'Pick a time';
+
+  @override
+  String get adminBookingNote =>
+      'Bookings entered on the salon\'s behalf are exempt from the three-week limit and from closed days.';
 
   @override
   String get retry => 'Try again';

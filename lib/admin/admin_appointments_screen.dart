@@ -13,6 +13,12 @@ import '../utils/formatting.dart';
 import '../widgets/common.dart';
 import '../widgets/gradient_button.dart';
 import '../providers/catalogue_provider.dart';
+import 'admin_book_screen.dart';
+import 'admin_closures_screen.dart';
+import 'admin_customers_screen.dart';
+import 'admin_manage_appointment_sheet.dart';
+import 'admin_services_screen.dart';
+import 'admin_stats_screen.dart';
 
 /// The salon-wide schedule as a calendar: the admin lands on today, sees a
 /// month grid with a marker under every day that has bookings, and taps a day
@@ -22,6 +28,14 @@ import '../providers/catalogue_provider.dart';
 /// [AdminProvider], so this screen stays a plain [StatelessWidget] that reads
 /// it and calls back into it.
 /// Confirms, then cancels [appointment] as staff. Shared by the day list.
+/// Opens the sheet where staff record what was done and how it went, then
+/// reloads the month if anything came back changed.
+Future<void> _manage(BuildContext context, Appointment appointment) async {
+  final provider = context.read<AdminProvider>();
+  final changed = await ManageAppointmentSheet.show(context, appointment);
+  if (changed == true) await provider.loadMonth(provider.visibleMonth);
+}
+
 Future<void> _confirmCancel(
   BuildContext context,
   Appointment appointment,
@@ -34,7 +48,10 @@ Future<void> _confirmCancel(
     builder: (dialogContext) => AlertDialog(
       backgroundColor: AppColors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      title: Text(l10n.cancelAppointmentTitle, style: const TextStyle(fontSize: 17)),
+      title: Text(
+        l10n.cancelAppointmentTitle,
+        style: const TextStyle(fontSize: 17),
+      ),
       content: Text(
         l10n.adminCancelConfirmBody(
           appointment.fullName,
@@ -66,12 +83,35 @@ Future<void> _confirmCancel(
     // The failure only exists after the await, so the message can only
     // be built here — and only if this screen is still around to show it.
     if (!context.mounted) return;
-    messenger.showSnackBar(SnackBar(content: Text(messageIn(context, failure))));
+    messenger.showSnackBar(
+      SnackBar(content: Text(messageIn(context, failure))),
+    );
   }
 }
 
+/// Where the menu can take staff, other than the schedule itself.
+enum _AdminDestination { customers, services, closures, stats }
+
 class AdminAppointmentsScreen extends StatelessWidget {
   const AdminAppointmentsScreen({super.key});
+
+  void _open(BuildContext context, _AdminDestination destination) {
+    final route = switch (destination) {
+      _AdminDestination.customers => AdminCustomersScreen.route(),
+      _AdminDestination.services => AdminServicesScreen.route(),
+      _AdminDestination.closures => AdminClosuresScreen.route(),
+      _AdminDestination.stats => AdminStatsScreen.route(),
+    };
+    Navigator.of(context).push(route);
+  }
+
+  Future<void> _newBooking(BuildContext context, AdminProvider provider) async {
+    // Opens on the day the schedule is showing: staff are almost always
+    // booking for the day in front of them.
+    final created = await Navigator.of(context)
+        .push<bool>(AdminBookScreen.route(initialDay: provider.selectedDay));
+    if (created == true) await provider.loadMonth(provider.visibleMonth);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -85,6 +125,32 @@ class AdminAppointmentsScreen extends StatelessWidget {
         automaticallyImplyLeading: false,
         title: Text(l10n.adminScheduleTitle),
         actions: [
+          // Everything that is not today's schedule lives behind one menu:
+          // the schedule is what staff open the app for, and the rest is
+          // occasional.
+          PopupMenuButton<_AdminDestination>(
+            tooltip: l10n.adminMenu,
+            icon: const Icon(Icons.more_vert_rounded, size: 20),
+            onSelected: (destination) => _open(context, destination),
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: _AdminDestination.customers,
+                child: Text(l10n.adminCustomers),
+              ),
+              PopupMenuItem(
+                value: _AdminDestination.services,
+                child: Text(l10n.adminServices),
+              ),
+              PopupMenuItem(
+                value: _AdminDestination.closures,
+                child: Text(l10n.adminClosures),
+              ),
+              PopupMenuItem(
+                value: _AdminDestination.stats,
+                child: Text(l10n.adminStats),
+              ),
+            ],
+          ),
           IconButton(
             tooltip: l10n.adminSignOut,
             icon: const Icon(Icons.logout_rounded, size: 20),
@@ -95,6 +161,11 @@ class AdminAppointmentsScreen extends StatelessWidget {
             onPressed: () => context.read<AdminProvider>().signOut(),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _newBooking(context, provider),
+        icon: const Icon(Icons.add_rounded, size: 20),
+        label: Text(l10n.adminNewBooking),
       ),
       body: SafeArea(
         top: false,
@@ -187,14 +258,14 @@ class _DayPanel extends StatelessWidget {
                   isToday
                       ? '${l10n.adminToday} · ${fmt.fullDate(provider.selectedDay)}'
                       : fmt.fullDate(provider.selectedDay),
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
+                  style: Theme.of(context).textTheme.titleSmall
+                      ?.copyWith(fontSize: 14, fontWeight: FontWeight.w600),
                 ),
               ),
               const SizedBox(width: 8),
-              StatusChip(label: l10n.adminDayAppointmentCount(appointments.length)),
+              StatusChip(
+                label: l10n.adminDayAppointmentCount(appointments.length),
+              ),
             ],
           ),
         ),
@@ -209,6 +280,7 @@ class _DayPanel extends StatelessWidget {
                     appointment: appointments[index],
                     onCancel: () =>
                         _confirmCancel(context, appointments[index]),
+                    onManage: () => _manage(context, appointments[index]),
                   ),
                 ),
         ),
@@ -231,10 +303,8 @@ class _EmptyDay extends StatelessWidget {
         child: Text(
           message,
           textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppColors.textSecondary,
-                fontSize: 13,
-              ),
+          style: Theme.of(context).textTheme.bodyMedium
+              ?.copyWith(color: AppColors.textSecondary, fontSize: 13),
         ),
       ),
     );
@@ -265,10 +335,8 @@ class _MonthHeader extends StatelessWidget {
             child: Text(
               label,
               maxLines: 1,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w600,
-                  ),
+              style: Theme.of(context).textTheme.titleSmall
+                  ?.copyWith(fontSize: 14.5, fontWeight: FontWeight.w600),
             ),
           ),
         ),
@@ -312,10 +380,10 @@ class _WeekdayRow extends StatelessWidget {
               child: Text(
                 label,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppColors.textTertiary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                    ),
+                  color: AppColors.textTertiary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ),
@@ -423,12 +491,12 @@ class _AdminDayCell extends StatelessWidget {
               Text(
                 '$day',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontSize: 13,
-                      color: textColor,
-                      fontWeight: isSelected || isToday
-                          ? FontWeight.w600
-                          : FontWeight.w400,
-                    ),
+                  fontSize: 13,
+                  color: textColor,
+                  fontWeight: isSelected || isToday
+                      ? FontWeight.w600
+                      : FontWeight.w400,
+                ),
               ),
               if (hasAppointments)
                 Positioned(
@@ -456,18 +524,20 @@ class _AdminAppointmentCard extends StatelessWidget {
   const _AdminAppointmentCard({
     required this.appointment,
     required this.onCancel,
+    required this.onManage,
   });
 
   final Appointment appointment;
   final VoidCallback onCancel;
+  final VoidCallback onManage;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final service = context
-        .watch<CatalogueProvider>()
-        .byId(appointment.mainService?.serviceId);
+    final service = context.watch<CatalogueProvider>().byId(
+      appointment.mainService?.serviceId,
+    );
 
     return SoftCard(
       padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
@@ -484,6 +554,16 @@ class _AdminAppointmentCard extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+              ),
+              _StatusChip(status: appointment.status),
+              IconButton(
+                tooltip: l10n.adminMenu,
+                onPressed: onManage,
+                icon: const Icon(Icons.tune_rounded, size: 18),
+                color: AppColors.textSecondary,
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
               ),
               IconButton(
                 tooltip: l10n.cancelAppointment,
@@ -514,12 +594,57 @@ class _AdminAppointmentCard extends StatelessWidget {
                 InfoRow(
                   icon: Icons.spa_outlined,
                   label: l10n.labelService,
-                  value: service?.localisedName(context) ?? l10n.serviceNotSelected,
+                  value:
+                      service?.localisedName(context) ??
+                      l10n.serviceNotSelected,
                 ),
+                if (appointment.total > 0)
+                  InfoRow(
+                    icon: Icons.payments_outlined,
+                    label: l10n.appointmentTotal,
+                    value: '${appointment.total.round()} TL',
+                  ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// How a booking went, at a glance. Confirmed is the ordinary case and says
+/// nothing; the others are the ones worth noticing on a busy day.
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.status});
+
+  final AppointmentStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    if (status == AppointmentStatus.confirmed) return const SizedBox.shrink();
+
+    final l10n = AppLocalizations.of(context);
+    final (label, color) = switch (status) {
+      AppointmentStatus.completed => (l10n.statusCompleted, AppColors.purple),
+      AppointmentStatus.noShow => (l10n.statusNoShow, AppColors.textSecondary),
+      _ => (l10n.statusCancelled, AppColors.textTertiary),
+    };
+
+    return Container(
+      margin: const EdgeInsets.only(right: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          fontSize: 10.5,
+          color: color,
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }

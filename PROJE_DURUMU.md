@@ -482,14 +482,36 @@ düzeltildi, güncel dosya temiz dönecek.
   tarihi ve en erken günü söylüyor
 - **269/269 test geçiyor** (+19 yeni), `flutter analyze` temiz
 
-### 🔴 SIRADA — Faz 4 (admin ekranları)
+### Faz 4 — admin uygulaması (bitti)
 
-Randevu oluşturma (telefonla kişi arama) · işlem listesi düzenleme + tutar girişi ·
-`completed`/`no_show` işaretleme · kişi listesi · hizmet ve fiyat yönetimi ·
-takvim kapatma · istatistik sayfası.
+Altı yeni ekran, hepsi takvimin üstündeki tek menünün arkasında — salonun
+uygulamayı açma sebebi gün takvimi, gerisi ara sıra:
 
-Repository ve provider katmanı bunların hepsini zaten destekliyor — eksik olan
-yalnızca ekranlar.
+- **Yeni randevu** (`admin_book_screen`): tek ekran, müşterinin beş adımı değil.
+  Telefon numarası tanıdıksa o kişiye bağlanıyor, değilse kişiyi oluşturuyor
+- **Randevu yönetimi** (`admin_manage_appointment_sheet`): yapılan işlemleri
+  ekleme/çıkarma ve tutar girişi, `completed`/`no_show` işaretleme, saat değiştirme,
+  iptal
+- **Kişiler**: ad veya telefonla arama, düzenleme, arşivleme ve geri getirme
+- **Hizmetler ve fiyatlar**: katalog düzenleme — fiyat değişikliği müşteri
+  uygulamasına anında yansıyor
+- **Kapalı günler**: tek gün veya aralık ilan etme, kaldırma
+- **İstatistik**: bu ay / geçen ay / bu yıl — yapılan, gelmeyen, kazanılan
+
+Personel muafiyetleri bilinçli ve test edilmiş: kapalı güne ve üç haftalık
+pencerenin içine randevu girebiliyor, son bir saatte iptal edebiliyor — ama
+**dolu bir slotu alamıyor**. İki kişi bir koltuğa oturamaz, bu bir politika
+kararı değil.
+
+`no_show` işaretleme ekranında, bunun o kişinin üç haftalık kısıtını **açtığı**
+yazılı — düğmeye basan bunu sonradan keşfetmemeli.
+
+**289/289 test geçiyor** (+20 yeni), `flutter analyze` temiz.
+
+### 🔴 SIRADA — Faz 5 (doğrulama)
+
+Denetim scriptlerinin gözden geçirilmesi, ardından senin onayınla duman testi ve
+telefon testi.
 
 ### Sonraya bırakılanlar
 - **Duman testi** — Berk'in onayı olmadan yapılmayacak

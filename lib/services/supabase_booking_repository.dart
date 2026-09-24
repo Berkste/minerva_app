@@ -48,7 +48,7 @@ class SupabaseBookingRepository implements BookingRepository {
   /// already holds and joining it per booking would be a round trip for
   /// nothing.
   static const String _appointmentColumns =
-      '*, appointment_services(service_id, kind, amount)';
+      '*, appointment_services(id, service_id, kind, amount)';
 
   @override
   String? get currentUserId => _client.auth.currentUser?.id;
@@ -481,6 +481,165 @@ class SupabaseBookingRepository implements BookingRepository {
           .from('salon_closures')
           .update({'deleted_at': DateTime.now().toUtc().toIso8601String()})
           .eq('id', closureId),
+    );
+  }
+
+  @override
+  Future<List<Customer>> fetchCustomers({
+    String? query,
+    bool includeArchived = false,
+  }) async {
+    var request = _client.from('customers').select();
+
+    if (!includeArchived) {
+      request = request.isFilter('deleted_at', null);
+    }
+
+    final trimmed = query?.trim() ?? '';
+    if (trimmed.isNotEmpty) {
+      // Name or number, whichever the person at the desk happens to have.
+      final pattern = '%$trimmed%';
+      request = request.or(
+        'first_name.ilike.$pattern,'
+        'last_name.ilike.$pattern,'
+        'phone.ilike.$pattern',
+      );
+    }
+
+    final rows = await _guard(
+      () => request.order('created_at', ascending: false).limit(200),
+    );
+
+    return rows
+        .cast<Map<String, dynamic>>()
+        .map(Customer.fromRow)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<Customer> adminUpdateCustomer({
+    required String customerId,
+    required String firstName,
+    String? lastName,
+    required String phone,
+  }) async {
+    final row = await _guard(
+      () => _client
+          .from('customers')
+          .update({
+            'first_name': firstName.trim(),
+            'last_name': _blankToNull(lastName),
+            'phone': phone,
+          })
+          .eq('id', customerId)
+          .select()
+          .single(),
+    );
+
+    return Customer.fromRow(row);
+  }
+
+  @override
+  Future<void> setCustomerArchived(String customerId, bool archived) async {
+    // Their bookings stay either way: archiving a person hides them from the
+    // salon's lists, it does not unmake anything that happened.
+    await _guard(
+      () => _client
+          .from('customers')
+          .update({
+            'deleted_at':
+                archived ? DateTime.now().toUtc().toIso8601String() : null,
+          })
+          .eq('id', customerId),
+    );
+  }
+
+  @override
+  Future<List<SalonService>> fetchCatalogue() async {
+    // Retired entries included: staff need to see what they took off the menu
+    // in order to put it back.
+    final rows = await _guard(
+      () => _client
+          .from('services')
+          .select()
+          .isFilter('deleted_at', null)
+          .order('kind')
+          .order('sort_order'),
+    );
+
+    return rows
+        .cast<Map<String, dynamic>>()
+        .map(SalonService.fromRow)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<SalonService> saveService(SalonService service) async {
+    final row = await _guard(
+      () => _client
+          .from('services')
+          .upsert({
+            'id': service.id,
+            'kind': service.kind.name,
+            'name_tr': service.nameTr,
+            'name_en': service.nameEn,
+            'description_tr': service.descriptionTr,
+            'description_en': service.descriptionEn,
+            'price_min': service.priceMin,
+            'price_max': service.priceMax,
+            'currency': service.currency,
+            'sort_order': service.sortOrder,
+          })
+          .select()
+          .single(),
+    );
+
+    return SalonService.fromRow(row);
+  }
+
+  @override
+  Future<void> setServiceActive(String serviceId, bool isActive) async {
+    await _guard(
+      () => _client
+          .from('services')
+          .update({'is_active': isActive})
+          .eq('id', serviceId),
+    );
+  }
+
+  @override
+  Future<void> addLineItem({
+    required String appointmentId,
+    required String serviceId,
+    num? amount,
+  }) async {
+    final service = await _guard(
+      () => _client
+          .from('services')
+          .select('id, kind, price_min')
+          .eq('id', serviceId)
+          .single(),
+    );
+
+    await _guard(
+      () => _client.from('appointment_services').insert({
+        'appointment_id': appointmentId,
+        'service_id': service['id'],
+        'kind': service['kind'],
+        // The catalogue's lower bound is the default, not the truth: for the
+        // two ranged add-ons only the salon knows what was charged.
+        'amount': amount ?? service['price_min'],
+      }),
+    );
+  }
+
+  @override
+  Future<void> removeLineItem(String lineItemId) async {
+    await _guard(
+      () => _client
+          .from('appointment_services')
+          .update({'deleted_at': DateTime.now().toUtc().toIso8601String()})
+          .eq('id', lineItemId),
     );
   }
 

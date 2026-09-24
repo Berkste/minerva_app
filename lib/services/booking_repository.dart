@@ -148,6 +148,52 @@ abstract interface class BookingRepository {
   /// Retires a closure, reopening those days.
   Future<void> removeClosure(String closureId);
 
+  /// Every customer the salon knows, newest first.
+  ///
+  /// [query] matches a name or a phone number. Archived people are left out
+  /// unless [includeArchived] is set — nothing is ever really deleted, so
+  /// "deleted" is a filter rather than an absence.
+  Future<List<Customer>> fetchCustomers({
+    String? query,
+    bool includeArchived = false,
+  });
+
+  /// Corrects a customer's details. Staff only.
+  Future<Customer> adminUpdateCustomer({
+    required String customerId,
+    required String firstName,
+    String? lastName,
+    required String phone,
+  });
+
+  /// Archives a person, or brings them back. Their bookings stay either way.
+  Future<void> setCustomerArchived(String customerId, bool archived);
+
+  /// The whole catalogue — treatments and add-ons, active and retired.
+  ///
+  /// [fetchTreatments] is the customer's view; this is the one staff edit.
+  Future<List<SalonService>> fetchCatalogue();
+
+  /// Creates or updates a catalogue entry.
+  Future<SalonService> saveService(SalonService service);
+
+  /// Takes a service off the menu, or puts it back. Existing bookings that
+  /// used it are unaffected — they recorded their own price.
+  Future<void> setServiceActive(String serviceId, bool isActive);
+
+  /// Records something the salon did on a booking, at the price it charged.
+  ///
+  /// [amount] defaults to the catalogue's lower bound, which is the whole
+  /// point of it being a bound: two add-ons are priced by the work done.
+  Future<void> addLineItem({
+    required String appointmentId,
+    required String serviceId,
+    num? amount,
+  });
+
+  /// Takes a line off a booking. Soft, like everything else.
+  Future<void> removeLineItem(String lineItemId);
+
   /// Ends the staff session.
   Future<void> adminSignOut();
 }

@@ -539,13 +539,13 @@ abstract class AppLocalizations {
   /// No description provided for @statusConfirmed.
   ///
   /// In tr, this message translates to:
-  /// **'Onaylandı'**
+  /// **'Onaylı'**
   String get statusConfirmed;
 
   /// No description provided for @statusCompleted.
   ///
   /// In tr, this message translates to:
-  /// **'Tamamlandı'**
+  /// **'Yapıldı'**
   String get statusCompleted;
 
   /// No description provided for @addNewAppointment.
@@ -781,6 +781,324 @@ abstract class AppLocalizations {
   /// In tr, this message translates to:
   /// **'Telefon numaranız sizi tanımlar; değiştirirseniz randevularınız yeni numarayla eşleşir. Geçmiş randevularınız alındıkları bilgilerle kalır.'**
   String get profilePhoneNote;
+
+  /// No description provided for @adminMenu.
+  ///
+  /// In tr, this message translates to:
+  /// **'Yönetim'**
+  String get adminMenu;
+
+  /// No description provided for @adminCustomers.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kişiler'**
+  String get adminCustomers;
+
+  /// No description provided for @adminServices.
+  ///
+  /// In tr, this message translates to:
+  /// **'Hizmetler ve fiyatlar'**
+  String get adminServices;
+
+  /// No description provided for @adminClosures.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kapalı günler'**
+  String get adminClosures;
+
+  /// No description provided for @adminStats.
+  ///
+  /// In tr, this message translates to:
+  /// **'İstatistik'**
+  String get adminStats;
+
+  /// No description provided for @adminNewBooking.
+  ///
+  /// In tr, this message translates to:
+  /// **'Yeni randevu'**
+  String get adminNewBooking;
+
+  /// No description provided for @markCompleted.
+  ///
+  /// In tr, this message translates to:
+  /// **'Yapıldı olarak işaretle'**
+  String get markCompleted;
+
+  /// No description provided for @markNoShow.
+  ///
+  /// In tr, this message translates to:
+  /// **'Gelmedi olarak işaretle'**
+  String get markNoShow;
+
+  /// No description provided for @markNoShowNote.
+  ///
+  /// In tr, this message translates to:
+  /// **'Gelmedi işaretlemek bu kişinin üç haftalık kısıtını kaldırır; hemen yeni randevu alabilir.'**
+  String get markNoShowNote;
+
+  /// No description provided for @statusCancelled.
+  ///
+  /// In tr, this message translates to:
+  /// **'İptal'**
+  String get statusCancelled;
+
+  /// No description provided for @statusNoShow.
+  ///
+  /// In tr, this message translates to:
+  /// **'Gelmedi'**
+  String get statusNoShow;
+
+  /// No description provided for @appointmentTotal.
+  ///
+  /// In tr, this message translates to:
+  /// **'Toplam'**
+  String get appointmentTotal;
+
+  /// No description provided for @appointmentServices.
+  ///
+  /// In tr, this message translates to:
+  /// **'Yapılan işlemler'**
+  String get appointmentServices;
+
+  /// No description provided for @addExtra.
+  ///
+  /// In tr, this message translates to:
+  /// **'İşlem ekle'**
+  String get addExtra;
+
+  /// No description provided for @removeLine.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kaldır'**
+  String get removeLine;
+
+  /// No description provided for @amountLabel.
+  ///
+  /// In tr, this message translates to:
+  /// **'Tutar'**
+  String get amountLabel;
+
+  /// No description provided for @noLineItems.
+  ///
+  /// In tr, this message translates to:
+  /// **'Henüz işlem eklenmedi.'**
+  String get noLineItems;
+
+  /// No description provided for @customerSearchHint.
+  ///
+  /// In tr, this message translates to:
+  /// **'Ad veya telefon ara'**
+  String get customerSearchHint;
+
+  /// No description provided for @archiveCustomer.
+  ///
+  /// In tr, this message translates to:
+  /// **'Arşivle'**
+  String get archiveCustomer;
+
+  /// No description provided for @restoreCustomer.
+  ///
+  /// In tr, this message translates to:
+  /// **'Geri getir'**
+  String get restoreCustomer;
+
+  /// No description provided for @showArchived.
+  ///
+  /// In tr, this message translates to:
+  /// **'Arşivdekileri göster'**
+  String get showArchived;
+
+  /// No description provided for @archivedLabel.
+  ///
+  /// In tr, this message translates to:
+  /// **'Arşivde'**
+  String get archivedLabel;
+
+  /// No description provided for @noCustomers.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kişi bulunamadı.'**
+  String get noCustomers;
+
+  /// No description provided for @editCustomer.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kişiyi düzenle'**
+  String get editCustomer;
+
+  /// No description provided for @serviceTreatments.
+  ///
+  /// In tr, this message translates to:
+  /// **'İşlemler'**
+  String get serviceTreatments;
+
+  /// No description provided for @serviceExtras.
+  ///
+  /// In tr, this message translates to:
+  /// **'Ekstralar'**
+  String get serviceExtras;
+
+  /// No description provided for @serviceInactive.
+  ///
+  /// In tr, this message translates to:
+  /// **'Menüde değil'**
+  String get serviceInactive;
+
+  /// No description provided for @editService.
+  ///
+  /// In tr, this message translates to:
+  /// **'Hizmeti düzenle'**
+  String get editService;
+
+  /// No description provided for @priceMinLabel.
+  ///
+  /// In tr, this message translates to:
+  /// **'Fiyat'**
+  String get priceMinLabel;
+
+  /// No description provided for @priceMaxLabel.
+  ///
+  /// In tr, this message translates to:
+  /// **'Üst sınır (aralıklıysa)'**
+  String get priceMaxLabel;
+
+  /// No description provided for @serviceNameTrLabel.
+  ///
+  /// In tr, this message translates to:
+  /// **'Ad (Türkçe)'**
+  String get serviceNameTrLabel;
+
+  /// No description provided for @serviceNameEnLabel.
+  ///
+  /// In tr, this message translates to:
+  /// **'Ad (İngilizce)'**
+  String get serviceNameEnLabel;
+
+  /// No description provided for @closureAdd.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kapalı gün ekle'**
+  String get closureAdd;
+
+  /// No description provided for @closureFrom.
+  ///
+  /// In tr, this message translates to:
+  /// **'Başlangıç'**
+  String get closureFrom;
+
+  /// No description provided for @closureTo.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bitiş'**
+  String get closureTo;
+
+  /// No description provided for @closureReason.
+  ///
+  /// In tr, this message translates to:
+  /// **'Sebep (isteğe bağlı)'**
+  String get closureReason;
+
+  /// No description provided for @noClosures.
+  ///
+  /// In tr, this message translates to:
+  /// **'İlan edilmiş kapalı gün yok.'**
+  String get noClosures;
+
+  /// No description provided for @closureRemoved.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kapalı gün kaldırıldı.'**
+  String get closureRemoved;
+
+  /// No description provided for @sundayAlwaysClosed.
+  ///
+  /// In tr, this message translates to:
+  /// **'Pazar günleri zaten kapalı; burada ayrıca eklemeye gerek yok.'**
+  String get sundayAlwaysClosed;
+
+  /// No description provided for @statsThisMonth.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bu ay'**
+  String get statsThisMonth;
+
+  /// No description provided for @statsLastMonth.
+  ///
+  /// In tr, this message translates to:
+  /// **'Geçen ay'**
+  String get statsLastMonth;
+
+  /// No description provided for @statsThisYear.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bu yıl'**
+  String get statsThisYear;
+
+  /// No description provided for @statsCompleted.
+  ///
+  /// In tr, this message translates to:
+  /// **'Yapılan'**
+  String get statsCompleted;
+
+  /// No description provided for @statsCancelled.
+  ///
+  /// In tr, this message translates to:
+  /// **'İptal edilen'**
+  String get statsCancelled;
+
+  /// No description provided for @statsNoShow.
+  ///
+  /// In tr, this message translates to:
+  /// **'Gelmeyen'**
+  String get statsNoShow;
+
+  /// No description provided for @statsRevenue.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kazanılan'**
+  String get statsRevenue;
+
+  /// No description provided for @statsRevenueNote.
+  ///
+  /// In tr, this message translates to:
+  /// **'Yalnızca girilmiş işlem tutarları toplanır. Tutarı girilmemiş randevular sıfır sayılır.'**
+  String get statsRevenueNote;
+
+  /// No description provided for @statsEmpty.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bu dönemde randevu yok.'**
+  String get statsEmpty;
+
+  /// No description provided for @newBookingFor.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kime'**
+  String get newBookingFor;
+
+  /// No description provided for @newBookingSaved.
+  ///
+  /// In tr, this message translates to:
+  /// **'Randevu oluşturuldu.'**
+  String get newBookingSaved;
+
+  /// No description provided for @pickDay.
+  ///
+  /// In tr, this message translates to:
+  /// **'Gün seç'**
+  String get pickDay;
+
+  /// No description provided for @pickHour.
+  ///
+  /// In tr, this message translates to:
+  /// **'Saat seç'**
+  String get pickHour;
+
+  /// No description provided for @adminBookingNote.
+  ///
+  /// In tr, this message translates to:
+  /// **'Salon adına girilen randevular üç haftalık kısıttan ve kapalı gün kuralından muaftır.'**
+  String get adminBookingNote;
 
   /// No description provided for @retry.
   ///

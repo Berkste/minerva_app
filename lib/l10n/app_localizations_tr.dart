@@ -240,10 +240,10 @@ class AppLocalizationsTr extends AppLocalizations {
   String get completedAppointment => 'Tamamlanan Randevu';
 
   @override
-  String get statusConfirmed => 'Onaylandı';
+  String get statusConfirmed => 'Onaylı';
 
   @override
-  String get statusCompleted => 'Tamamlandı';
+  String get statusCompleted => 'Yapıldı';
 
   @override
   String get addNewAppointment => 'Yeni Randevu Ekle';
@@ -379,6 +379,169 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get profilePhoneNote =>
       'Telefon numaranız sizi tanımlar; değiştirirseniz randevularınız yeni numarayla eşleşir. Geçmiş randevularınız alındıkları bilgilerle kalır.';
+
+  @override
+  String get adminMenu => 'Yönetim';
+
+  @override
+  String get adminCustomers => 'Kişiler';
+
+  @override
+  String get adminServices => 'Hizmetler ve fiyatlar';
+
+  @override
+  String get adminClosures => 'Kapalı günler';
+
+  @override
+  String get adminStats => 'İstatistik';
+
+  @override
+  String get adminNewBooking => 'Yeni randevu';
+
+  @override
+  String get markCompleted => 'Yapıldı olarak işaretle';
+
+  @override
+  String get markNoShow => 'Gelmedi olarak işaretle';
+
+  @override
+  String get markNoShowNote =>
+      'Gelmedi işaretlemek bu kişinin üç haftalık kısıtını kaldırır; hemen yeni randevu alabilir.';
+
+  @override
+  String get statusCancelled => 'İptal';
+
+  @override
+  String get statusNoShow => 'Gelmedi';
+
+  @override
+  String get appointmentTotal => 'Toplam';
+
+  @override
+  String get appointmentServices => 'Yapılan işlemler';
+
+  @override
+  String get addExtra => 'İşlem ekle';
+
+  @override
+  String get removeLine => 'Kaldır';
+
+  @override
+  String get amountLabel => 'Tutar';
+
+  @override
+  String get noLineItems => 'Henüz işlem eklenmedi.';
+
+  @override
+  String get customerSearchHint => 'Ad veya telefon ara';
+
+  @override
+  String get archiveCustomer => 'Arşivle';
+
+  @override
+  String get restoreCustomer => 'Geri getir';
+
+  @override
+  String get showArchived => 'Arşivdekileri göster';
+
+  @override
+  String get archivedLabel => 'Arşivde';
+
+  @override
+  String get noCustomers => 'Kişi bulunamadı.';
+
+  @override
+  String get editCustomer => 'Kişiyi düzenle';
+
+  @override
+  String get serviceTreatments => 'İşlemler';
+
+  @override
+  String get serviceExtras => 'Ekstralar';
+
+  @override
+  String get serviceInactive => 'Menüde değil';
+
+  @override
+  String get editService => 'Hizmeti düzenle';
+
+  @override
+  String get priceMinLabel => 'Fiyat';
+
+  @override
+  String get priceMaxLabel => 'Üst sınır (aralıklıysa)';
+
+  @override
+  String get serviceNameTrLabel => 'Ad (Türkçe)';
+
+  @override
+  String get serviceNameEnLabel => 'Ad (İngilizce)';
+
+  @override
+  String get closureAdd => 'Kapalı gün ekle';
+
+  @override
+  String get closureFrom => 'Başlangıç';
+
+  @override
+  String get closureTo => 'Bitiş';
+
+  @override
+  String get closureReason => 'Sebep (isteğe bağlı)';
+
+  @override
+  String get noClosures => 'İlan edilmiş kapalı gün yok.';
+
+  @override
+  String get closureRemoved => 'Kapalı gün kaldırıldı.';
+
+  @override
+  String get sundayAlwaysClosed =>
+      'Pazar günleri zaten kapalı; burada ayrıca eklemeye gerek yok.';
+
+  @override
+  String get statsThisMonth => 'Bu ay';
+
+  @override
+  String get statsLastMonth => 'Geçen ay';
+
+  @override
+  String get statsThisYear => 'Bu yıl';
+
+  @override
+  String get statsCompleted => 'Yapılan';
+
+  @override
+  String get statsCancelled => 'İptal edilen';
+
+  @override
+  String get statsNoShow => 'Gelmeyen';
+
+  @override
+  String get statsRevenue => 'Kazanılan';
+
+  @override
+  String get statsRevenueNote =>
+      'Yalnızca girilmiş işlem tutarları toplanır. Tutarı girilmemiş randevular sıfır sayılır.';
+
+  @override
+  String get statsEmpty => 'Bu dönemde randevu yok.';
+
+  @override
+  String get newBookingFor => 'Kime';
+
+  @override
+  String get newBookingSaved => 'Randevu oluşturuldu.';
+
+  @override
+  String get pickDay => 'Gün seç';
+
+  @override
+  String get pickHour => 'Saat seç';
+
+  @override
+  String get adminBookingNote =>
+      'Salon adına girilen randevular üç haftalık kısıttan ve kapalı gün kuralından muaftır.';
 
   @override
   String get retry => 'Tekrar dene';

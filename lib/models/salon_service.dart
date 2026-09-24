@@ -177,8 +177,14 @@ class AppointmentService {
     required this.serviceId,
     required this.kind,
     required this.amount,
+    this.id,
     this.service,
   });
+
+  /// Server-generated. Null for a line built locally — a fake, a cache — which
+  /// is also why removing one is only offered where the id came from the
+  /// database.
+  final String? id;
 
   final String serviceId;
   final ServiceKind kind;
@@ -191,6 +197,7 @@ class AppointmentService {
   factory AppointmentService.fromRow(Map<String, dynamic> row) {
     final joined = row['services'];
     return AppointmentService(
+      id: row['id'] as String?,
       serviceId: row['service_id'] as String,
       kind: ServiceKind.fromName(row['kind'] as String?),
       amount: (row['amount'] as num?) ?? 0,
@@ -201,6 +208,7 @@ class AppointmentService {
   }
 
   Map<String, dynamic> toJson() => {
+        'id': id,
         'service_id': serviceId,
         'kind': kind.name,
         'amount': amount,

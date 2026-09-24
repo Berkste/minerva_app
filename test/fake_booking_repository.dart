@@ -56,6 +56,13 @@ class FakeBookingRepository implements BookingRepository {
     ),
   ];
 
+  /// Ids of archived customers. Nothing is really deleted here either, so
+  /// "deleted" is a set rather than a removal.
+  final Set<String> archived = {};
+
+  /// Ids of services taken off the menu.
+  final Set<String> inactiveServices = {};
+
   bool signedIn = false;
   int bookCallCount = 0;
 
@@ -451,6 +458,133 @@ class FakeBookingRepository implements BookingRepository {
   Future<void> removeClosure(String closureId) async {
     if (!await isCurrentUserAdmin()) return;
     closures.removeWhere((c) => c.id == closureId);
+  }
+
+  @override
+  Future<List<Customer>> fetchCustomers({
+    String? query,
+    bool includeArchived = false,
+  }) async {
+    if (!await isCurrentUserAdmin()) return const [];
+
+    final needle = (query ?? '').trim().toLowerCase();
+
+    return customers.where((c) {
+      if (!includeArchived && archived.contains(c.id)) return false;
+      if (needle.isEmpty) return true;
+      return c.firstName.toLowerCase().contains(needle) ||
+          (c.lastName ?? '').toLowerCase().contains(needle) ||
+          c.phone.contains(needle);
+    }).toList();
+  }
+
+  @override
+  Future<Customer> adminUpdateCustomer({
+    required String customerId,
+    required String firstName,
+    String? lastName,
+    required String phone,
+  }) async {
+    if (!await isCurrentUserAdmin()) throw const NotAnAdminException();
+
+    final index = customers.indexWhere((c) => c.id == customerId);
+    if (index == -1) {
+      throw const BookingFailedException('No such customer.');
+    }
+
+    final updated = customers[index].copyWith(
+      firstName: firstName.trim(),
+      lastName: _blankToNull(lastName),
+      clearLastName: _blankToNull(lastName) == null,
+      phone: phone,
+    );
+    customers[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<void> setCustomerArchived(String customerId, bool archived_) async {
+    if (!await isCurrentUserAdmin()) return;
+    if (archived_) {
+      archived.add(customerId);
+    } else {
+      archived.remove(customerId);
+    }
+  }
+
+  @override
+  Future<List<SalonService>> fetchCatalogue() async => treatments;
+
+  @override
+  Future<SalonService> saveService(SalonService service) async {
+    if (!await isCurrentUserAdmin()) throw const NotAnAdminException();
+
+    final index = treatments.indexWhere((s) => s.id == service.id);
+    final next = [...treatments];
+    if (index == -1) {
+      next.add(service);
+    } else {
+      next[index] = service;
+    }
+    treatments = next;
+    return service;
+  }
+
+  @override
+  Future<void> setServiceActive(String serviceId, bool isActive) async {
+    if (!await isCurrentUserAdmin()) return;
+    if (isActive) {
+      inactiveServices.remove(serviceId);
+    } else {
+      inactiveServices.add(serviceId);
+    }
+  }
+
+  @override
+  Future<void> addLineItem({
+    required String appointmentId,
+    required String serviceId,
+    num? amount,
+  }) async {
+    if (!await isCurrentUserAdmin()) throw const NotAnAdminException();
+
+    final index = appointments.indexWhere((a) => a.id == appointmentId);
+    if (index == -1) return;
+
+    SalonService? service;
+    for (final candidate in treatments) {
+      if (candidate.id == serviceId) service = candidate;
+    }
+    if (service == null) {
+      throw const BookingFailedException('No such service.');
+    }
+
+    final line = AppointmentService(
+      id: 'line-${_nextId++}',
+      serviceId: service.id,
+      kind: service.kind,
+      amount: amount ?? service.priceMin,
+      service: service,
+    );
+
+    appointments[index] = appointments[index].copyWith(
+      services: [...appointments[index].services, line],
+    );
+  }
+
+  @override
+  Future<void> removeLineItem(String lineItemId) async {
+    if (!await isCurrentUserAdmin()) return;
+
+    for (var i = 0; i < appointments.length; i++) {
+      final lines = appointments[i].services;
+      if (lines.any((l) => l.id == lineItemId)) {
+        appointments[i] = appointments[i].copyWith(
+          services: lines.where((l) => l.id != lineItemId).toList(),
+        );
+        return;
+      }
+    }
   }
 
   @override
