@@ -525,13 +525,31 @@ yazılı — düğmeye basan bunu sonradan keşfetmemeli.
 
 **358/358 test geçiyor** (+69 bu fazda), `flutter analyze` temiz.
 
+### Duman testi — müşteri tarafı yapıldı (2026-09-24)
+
+**→ `supabase/DUMAN_TESTI.md`** — 28 adım, 0 uyarı, adım adım sonuçlar ve
+temizlik SQL'i.
+
+Öne çıkanlar: üç cihaz aynı slota aynı anda saldırdı, **tam biri kazandı**;
+reddedilen randevular veritabanında iz bırakmadı; `MN002` çakışan tarihi mesajda
+söyledi; profil düzenlemek geçmiş randevuyu değiştirmedi.
+
+Üç not: reddedilen bir deneme anonim `auth.users` satırı bırakıyor; pencere
+kontrolü unique index'ten önce çalıştığı için dolu slota pencere içinden taşıma
+"dolu" değil "üç haftada bir" diyor; `MN004` müşteri tarafından sınanamıyor.
+
+Test **canlı veritabanında ~6 kişi ve ~8 randevu** bıraktı, hepsi `555999` ile
+başlayan numaralarda. Silme SQL'i raporun sonunda.
+
 ### 🔴 SIRADA — sende
 
-1. **Duman testi** — istediğinde, `CANLIYA_CIKIS.md`'deki 14 maddelik liste
-2. **Telefon testi** — Android sideload, iOS TestFlight
-3. **Android upload keystore** — yükleme anında
-4. **iOS admin flavor'ı** — Mac mini oturumunda Xcode'da scheme + ayrı bundle id
-5. **Supabase ücretli plan** — telefon testiyle birlikte karara bağlanacak
+1. **Duman testinin personel yarısı** — muafiyetler, `no_show` kilidi, işlem ve
+   tutar girişi, istatistik. `CANLIYA_CIKIS.md`'deki 7–14. maddeler
+2. **Test verisini silmek** — `DUMAN_TESTI.md` sonundaki SQL
+3. **Telefon testi** — Android sideload, iOS TestFlight
+4. **Android upload keystore** — yükleme anında
+5. **iOS admin flavor'ı** — Mac mini oturumunda Xcode'da scheme + ayrı bundle id
+6. **Supabase ücretli plan** — telefon testiyle birlikte karara bağlanacak
 
 ### Sonraya bırakılanlar
 - **Duman testi** — Berk'in onayı olmadan yapılmayacak
