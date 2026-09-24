@@ -1,6 +1,6 @@
-﻿# Minerva Nail Art — Proje Durumu
+# Minerva Nail Art — Proje Durumu
 
-**Son güncelleme:** 2026-09-10
+**Son güncelleme:** 2026-09-24
 **Depo:** `C:\Projects\minerva_app`
 **Teknoloji:** Flutter 3.47.0 / Dart 3.13.0 · Supabase (Postgres + RLS) · `provider` state yönetimi
 
@@ -10,47 +10,37 @@
 
 | | Durum |
 |---|---|
-| `main` branch | `origin/main` ile eşit — push edildi |
-| Açık iş | Yok — admin build ayrımı + gün takvimi `main`'e merge edildi |
-| Doğrulama | `flutter analyze` temiz · **226 test geçiyor** · iki release APK derleniyor |
-| Sıradaki iş | Supabase projesini canlıya hazırlamak — bkz. §10 |
+| `main` branch | `origin/main` ile eşit — `37660c9`, çalışma alanı temiz |
+| Kod | Faz 1–5 bitti: şema canlıda, müşteri ve personel uygulamalarının tamamı yazıldı |
+| Doğrulama | `flutter analyze` temiz · **358/358 test geçiyor** — ikisi de bugün çalıştırıldı |
+| Duman testi | Müşteri yarısı (1–6) yapıldı ✅ · personel yarısı (7–14) **bekliyor** |
+| Sıradaki iş | §5.1 — duman testinin personel yarısı, ardından test verisinin silinmesi |
+| Yayına engel | Android upload keystore yok · iOS admin flavor'ı yok · Supabase ücretsiz planda |
 
 ---
 
 ## 2. Branch haritası
 
+Tek branch kaldı. Faz 2 öncesi feature branch'leri (`feature/admin-appointments`,
+`feature/admin-build-and-calendar`, `feature/bundle-fonts`) ve eski
+`edit_20260827` / `supbase_work` branch'leri merge edilip silindi — commit'lerinin
+hepsi `main` geçmişinde duruyor.
+
+| Branch | Commit | Durum |
+|---|---|---|
+| `main` | `37660c9` | ✅ `origin/main` ile eşit |
+
+**Worktree:** yalnızca `C:/Projects/minerva_app` → `main`. Başka worktree yok.
+
+Son beş commit:
+
 ```
-* 0644b72  (main, origin/main)   flavor: com.oberk.minerva
-* …        doküman commit'leri
-* 0146efc
-* f9a4f3c
-* e019b05
-*   1ef46cf
-|\
-| * a742027  feature/admin-appointments
-* |   ccbd1fb
-|\ \
-| |/
-|/|
-| * a9c1d44  feature/bundle-fonts
-|/
-* 5c66e25
-* 413d4d5  (supbase_work)
-* 0b6dbb8  (edit_20260827)
-* 3677a83
+37660c9  Run the customer half of the smoke test against production
+269be32  Check the things nothing was checking
+732738a  Give the salon the screens it runs on
+c148158  Show the customer what is possible before they ask
+e5c0761  Record the schema as applied and verified
 ```
-
-| Branch | Commit | Ne işe yarıyor | Durum |
-|---|---|---|---|
-| `main` | `0644b72` | Ana hat, her şey burada | ✅ `origin/main` ile eşit |
-| ~~`feature/admin-build-and-calendar`~~ | — | Build ayrımı + gün takvimi | ✅ Merge edildi, branch silindi |
-| `edit_20260827` | `0b6dbb8` | Lokalizasyon işinin eski branch'i | 🗑️ `main` geçmişinde var, istenirse silinir |
-| `supbase_work` | `413d4d5` | Supabase geçişinin eski branch'i | 🗑️ `main` geçmişinde var, istenirse silinir |
-
-**Worktree:** yalnızca `C:/Projects/minerva_app` → `main`. Admin işi için açılan
-`.claude/worktrees/agent-a11f59e489ab0fdc9` merge sonrası kaldırıldı.
-
-> Not: `7ccb00b`, `f8185f3`, `c3bee4c`, `678ef2b` commit'leri geçmişin yeniden yazılmasından kalan, hiçbir branch'in işaret etmediği eski kopyalardır. Görmezden gel.
 
 ---
 
@@ -132,7 +122,7 @@ Projenin etrafında döndüğü garanti burada kuruldu:
 - İki release APK de derlendi: müşteri **52.1 MB**, admin **51.5 MB**
 - 🛑 **Burada durduk** — sen test edecektin.
 
-### 2026-09-10 — Kullanıcı testi, düzeltme ve merge (bugün)
+### 2026-09-10 — Kullanıcı testi, düzeltme ve merge
 
 **Sabah — durum kontrolü**
 - Branch'ler ve worktree yerinde, çalışma alanları temiz; bu doküman yazıldı
@@ -166,102 +156,129 @@ Projenin etrafında döndüğü garanti burada kuruldu:
 
 ## 4. Şu anki mimari
 
-> ⚠️ **Bu bölümün veritabanı kısmı Faz 2 ile değişti.** Aşağıda anlatılan
-> `profiles` tablosu, tek `service_id` kolonu ve `user_id` bağı artık geçerli
-> değil; güncel şema `supabase/migrations/20260921120000_schema.sql` ve
-> tasarım gerekçesi `FAZ2_ANALIZ.md`. Uygulama kodu ise **henüz eski şemaya
-> göre** — Faz 2'de güncellenecek.
+Faz 2 ile veritabanı yeniden kuruldu: `profiles` gitti, kimlik telefon numarasına
+bağlandı. **Uygulama kodu da bu şemaya taşındı** — `profiles`, `user_id` ve tek
+`service_id` kolonu kodda hiç kalmadı. Tasarım gerekçesi `FAZ2_ANALIZ.md`'de.
 
 ```
-supabase/migrations/
-  20260921120000_schema.sql      Şema, RLS, 5 trigger, tekil indeksler
-  20260921120100_catalogue.sql   Hizmet kataloğu (7 ana + 8 ekstra)
-supabase/checks/
-  01_schema_audit.sql            Şema denetimi (salt okunur)
-  02_data_audit.sql              Veri denetimi (salt okunur)
-  04_faz2_reset.sql              Faz 2 öncesi eski şemayı düşürme (YIKICI)
+supabase/
+  migrations/
+    20260921120000_schema.sql    7 tablo, 3 enum, 8 trigger, 11 fonksiyon, 26 politika
+    20260921120100_catalogue.sql Hizmet kataloğu (7 ana + 8 ekstra)
+  checks/
+    01_schema_audit.sql          Şema denetimi (salt okunur) — canlıda sıfır FAIL
+    02_data_audit.sql            Veri denetimi (salt okunur)
+    04_faz2_reset.sql            Eski şemayı düşürme (YIKICI — bir daha çalıştırılmamalı)
+    05_missing_triggers.sql      2026-09-23'te eksik kalan iki trigger'ın yaması
+  CANLIYA_CIKIS.md               Göç adımları + 14 maddelik duman testi listesi
+  DUMAN_TESTI.md                 Müşteri yarısının sonucu (28 adım) + temizlik SQL'i
 
 lib/
   main.dart                   MÜŞTERİ girişi (mağaza sürümü)
-  main_admin.dart             ADMIN girişi (personel sürümü, mağazaya gitmez)
+  main_admin.dart             ADMİN girişi (personel sürümü, mağazaya gitmez)
   app_shell.dart              Ortak MaterialApp kabuğu
-  admin/                      admin_login_screen · admin_app · admin_appointments_screen
+  admin/                      login · app · appointments (gün takvimi) · book
+                              manage_appointment_sheet · customers · services
+                              closures · stats · hour_chip
   config/supabase_config.dart --dart-define ile gelen kimlik bilgileri
   l10n/                       app_tr.arb (şablon) + app_en.arb + üretilmiş dosyalar
-  models/                     slot · appointment · profile · salon_service
-  providers/                  booking · appointment · availability · locale · admin
+  models/                     slot · appointment · customer · salon_service · salon_closure
+  providers/                  booking · appointment · availability · catalogue
+                              locale · admin
   services/                   booking_repository (arayüz) · supabase_booking_repository
                               booking_exception · local_cache
   screens/                    splash · main_shell · home · appointments · profile
-                              setup_required · booking/ (5 adım)
+                              edit_profile · setup_required · booking/ (6 ekran)
   widgets/ · theme/ · utils/
-test/
-  widget_test · render_test · booking_concurrency_test · admin_test
-  fake_booking_repository.dart   Unique index'i taklit eden bellek içi backend
-  error_mapping_test.dart        Postgres hata kodu → müşteri mesajı eşlemesi
+
+test/                         358 test
+  widget_test · render_test · admin_render_test · admin_test
+  admin_operations_test · booking_concurrency_test · customer_rules_test
+  error_mapping_test
+  schema_audit_consistency_test  Denetim scriptini şema dosyasıyla karşılaştırır
+  fake_booking_repository.dart   Beş kuralı da taklit eden bellek içi backend
 ```
 
-**Supabase test projesi:** ref `dycjvupgvuxkguorzaqz` · anonim giriş **açık** · admin migration uygulandı (ilk kısmi uygulamadan sonra idempotent tekrar çalıştırmayla düzeltildi).
+**Kimlik (Faz 2):** kayıt yok, OTP yok. `claim_customer` ad + telefon eşleşmesiyle
+kişiyi buluyor ya da oluşturuyor, cihazı `customer_devices` ile bağlıyor. Aynı kişi
+ikinci cihazda ve yeniden kurulumda randevularını görüyor; telefon doğru ama isim
+yanlışsa `MN005` dönüyor ve kayıt hakkında hiçbir şey sızmıyor.
+
+**Supabase projesi:** ref `dycjvupgvuxkguorzaqz` — geliştirme projesi canlı olarak
+kullanılıyor. Anonim giriş açık, Faz 2 şeması uygulandı ve denetlendi (2026-09-23).
+Personel hesabı: `admin@minerva.com.tr`.
 
 ---
 
 ## 5. Yapılacaklar (sıralı)
 
-### Şimdi
-| # | İş | Kim | Durum |
+### 5.1 Şimdi — sende
+
+| # | İş | Nerede | Durum |
 |---|---|---|---|
-| 1 | Feature branch'i test et | Sen | ✅ Bitti |
-| 2 | Tarihi geçmiş sabit test verisini düzelt | Ben | ✅ `0146efc` |
-| 3 | `feature/admin-build-and-calendar` → `main` merge | Ben | ✅ Fast-forward |
-| 4 | `main` üzerinde analyze + test + iki release build | Ben | ✅ Temiz / 226 / derlendi |
-| 5 | Feature branch + worktree temizliği | Ben | ✅ Kaldırıldı |
-| 6 | **`git push origin main`** | **Sen** | 🟡 **Bekliyor** |
+| 1 | **Duman testinin personel yarısı** — muafiyetler, dolu slot kilidi, `no_show`, işlem/tutar girişi, istatistik, kapalı gün ilanı | `supabase/CANLIYA_CIKIS.md` 7–14. maddeler | 🔴 Bekliyor |
+| 2 | **Test verisini sil** — `555999…` ile başlayan ~6 kişi / ~8 randevu + ~21 anonim oturum | `supabase/DUMAN_TESTI.md` sonundaki SQL | 🔴 1'den sonra |
+| 3 | **Telefon testi** — Android sideload, iOS TestFlight | — | 🔴 2'den sonra |
 
-```powershell
-git -C C:\Projects\minerva_app push origin main
-```
+> 1. adım canlı veritabanına yazıyor. 2. adım **gerçek müşteri girmeden önce**
+> çalıştırılmalı — `555999` filtresi sonrasında da doğru çalışır ama anonim
+> kullanıcıları silen sorgu o zaman gerçek müşterileri de götürür.
 
-Eski `edit_20260827` ve `supbase_work` branch'leri duruyor; ikisinin de commit'leri
-`main` geçmişinde var, istersen tek komutla silinir.
+### 5.2 Gerçek yayın öncesi — açık kalanlar
 
-### Gerçek yayın öncesi
-| İş | Not |
+| İş | Neden bekliyor | Neyi engelliyor |
+|---|---|---|
+| **Android upload keystore** | Yükleme anında oluşturulacak; şu an yalnızca debug imzası var | Play yayını |
+| **iOS admin flavor'ı** | macOS yok; Xcode'da scheme + ayrı bundle id gerekiyor | iOS'ta personel sürümü hiç çıkmaz |
+| **iOS release build** | Hiç denenmedi (macOS yok) | iOS yayını |
+| **Supabase ücretli plan** | Telefon testiyle birlikte karara bağlanacak | Ücretsiz plan 7 gün hareketsizlikte duraklar, PITR yedek yok |
+| **Panel ayarları turu** | `CANLIYA_CIKIS.md` sonundaki 6 maddelik liste henüz tek tek geçilmedi | Kişisel veri canlıya çıkmadan geçilmeli |
+| **Personel dağıtım kanalı** | §6'daki açık soru | Keystore ihtiyacının aciliyetini belirliyor |
+
+### 5.3 Dokümantasyon borçları (kodu etkilemiyor)
+
+| Ne | Durum |
 |---|---|
-| **Android upload keystore oluşturulması** | Henüz yok — Play yayını için şart |
-| iOS release build denemesi | Hiç denenmedi (macOS yok) |
-| Prod Supabase projesi | Şu an test projesi (`dycjvupgvuxkguorzaqz`) kullanılıyor |
-| Personel dağıtım kanalı seçimi | §6'daki açık soru |
+| README "226 tests" diyor, gerçek sayı **358** | 🟡 Açık |
+| README'nin "Identity, and guest → customer" bölümü hâlâ `profiles` tablosunu ve cihaza bağlı kimliği anlatıyor — Faz 2 ile geçersiz | 🟡 Açık |
+| §3'teki tarihçe Faz 2 öncesi anlatımı koruyor | ✅ Bilinçli — geçmiş kaydı, üstüne yazılmıyor |
 
 ---
 
-## 6. Açık soru (cevap bekliyor)
+## 6. Açık soru (hâlâ cevap bekliyor)
 
 **Personel admin sürümünü nasıl alacak?**
 - (a) İç test kanalı — Play Internal Testing / TestFlight
 - (b) Doğrudan APK sideload
 
-Kodu etkilemiyor; sadece README'deki dağıtım yönergesini ve keystore ihtiyacının aciliyetini belirliyor.
+Kodu etkilemiyor; sadece README'deki dağıtım yönergesini ve keystore ihtiyacının
+aciliyetini belirliyor.
 
 ---
 
 ## 7. Bilinen durumlar
 
-### 7.1 ✅ Çözüldü — test paketindeki 2 kırmızı (2026-09-10)
+### 7.1 Çözülenler
 
-`test/booking_concurrency_test.dart:22`'deki `Slot(DateTime(2026, 9, 4), 14)` sabit tarihti.
-İki test `provider.upcoming.length == 1` bekliyordu; `upcoming` ise `DateTime.now()`'a göre
-süzüyor, dolayısıyla 4 Eylül geçtikten sonra liste boş dönmeye başladı — kod regresyonu değil,
-zaman bombası fixture'ı. Slot artık `DateTime.now().add(Duration(days: 7))` ile üretiliyor
-(commit `0146efc`). **226/226 geçiyor.**
+| Konu | Nasıl çözüldü |
+|---|---|
+| Test paketindeki 2 kırmızı (2026-09-10) | Sabit tarihli fixture `DateTime.now()`'a bağlandı (`0146efc`) |
+| Tek `applicationId` | Android flavor'ları: `com.oberk.minerva` / `com.oberk.minerva.admin` — ikisi bir telefonda yan yana durabiliyor |
+| **Kimlik cihaza bağlıydı** | Faz 2: kimlik telefon numarasında. `claim_customer` ad+telefon eşleşmesiyle kişiyi buluyor, cihazı `customer_devices` ile bağlıyor. İkinci cihazda ve yeniden kurulumda randevular görünüyor — **OTP yok** |
+| İki trigger sessizce eksikti (2026-09-23) | `05_missing_triggers.sql` ile kuruldu; şema dosyası artık her trigger'ı oluşturmadan önce düşürüyor, böylece yarım kalmış bir kurulum dosya yeniden çalıştırılarak onarılıyor |
+| Gün takvimi küçük telefonda taşıyordu | Faz 5: takvim gün listesiyle birlikte kayıyor — hatayı `admin_render_test.dart` buldu |
+| Denetim scripti ile şema sessizce ayrışabiliyordu | `schema_audit_consistency_test.dart` her `flutter test`'te ikisini karşılaştırıyor |
 
-### 7.2 Bilerek ertelenenler (hata değil, karar)
+### 7.2 Bilerek böyle (hata değil, karar)
 
 | Konu | Durum |
 |---|---|
-| Admin yetkisi | Sadece **görüntüleme + iptal**. Randevu oluşturma/erteleme yok (RLS'te de admin INSERT politikası yok) |
-| ~~Tek `applicationId`~~ | ✅ Çözüldü (2026-09-10): Android flavor kuruldu — `com.oberk.minerva` / `com.oberk.minerva.admin`, ikisi bir telefonda durabiliyor. iOS hâlâ tek target |
-| Kimlik cihaza bağlı | Anonim giriş kurulum başına; ikinci cihazda veya yeniden kurulumda müşteri randevularını göremez. Çözüm yolu belli: telefon doğrulaması ile anonim kullanıcıyı bağlamak — şema değişmiyor |
-| README test sayısı | README "210 tests" diyor, gerçek sayı 226 — küçük tutarsızlık |
+| Müşteri kısıtları | 21 gün kuralı (`MN002`), 1 saat penceresi, kapalı günler — hepsi veritabanında trigger, uygulamada değil |
+| Personel muafiyetleri | Kapalı güne ve 21 günün içine randevu girebilir, son 1 saatte iptal edebilir — **ama dolu slotu alamaz.** Hiç kimsenin muaf olmadığı tek kural |
+| iOS tek target | Admin flavor'ı yok; Mac mini oturumunda kurulacak |
+| Reddedilen deneme anonim `auth.users` satırı bırakıyor | Duman testinde görüldü; zararsız, temizlik SQL'i `DUMAN_TESTI.md` sonunda |
+| Pencere kontrolü unique index'ten önce çalışıyor | Dolu slota pencere içinden taşıma "dolu" değil "üç haftada bir" diyor — mesaj sırası meselesi, kural doğru çalışıyor |
+| `MN004` müşteri tarafından sınanamıyor | Duman testinin personel yarısında test edilecek |
 
 ---
 
@@ -281,13 +298,13 @@ flutter pub get
 
 ```powershell
 flutter analyze     # temiz çıkmalı
-flutter test        # 226/226 geçmeli
+flutter test        # 358/358 geçmeli
 ```
 
 ### Adım 2 — Müşteri sürümünü çalıştır
 
 ```powershell
-flutter run `
+flutter run --flavor customer `
   --dart-define=SUPABASE_URL=https://dycjvupgvuxkguorzaqz.supabase.co `
   --dart-define=SUPABASE_ANON_KEY=<publishable-key>
 ```
@@ -314,13 +331,13 @@ Kontrol listesi:
 Sonra:
 
 ```powershell
-flutter run -t lib/main_admin.dart `
+flutter run --flavor admin -t lib/main_admin.dart `
   --dart-define=SUPABASE_URL=https://dycjvupgvuxkguorzaqz.supabase.co `
   --dart-define=SUPABASE_ANON_KEY=<publishable-key>
 ```
 
-> Aynı `applicationId` olduğu için admin sürümü müşteri sürümünün üzerine kurulur.
-> Sırayla test et, ikisini aynı anda telefonda tutmaya çalışma.
+> Artık ayrı flavor'lar var (`com.oberk.minerva` / `com.oberk.minerva.admin`),
+> ikisi aynı telefonda yan yana durabilir — biri diğerinin üzerine kurulmuyor.
 
 Kontrol listesi:
 - [ ] Uygulama doğrudan **personel giriş ekranına** açılıyor (müşteri akışı hiç görünmüyor)
@@ -351,16 +368,16 @@ Tek bir satır çıkmalı:
 main_admin.dart: import 'admin/admin_app.dart';
 ```
 Başka bir dosya listelenirse admin kodu müşteri build'ine sızmış demektir.
-(Bugün çalıştırdım — tek satır çıkıyor, ayrım sağlam.)
+(2026-09-24'te yeniden çalıştırıldı — tek satır çıkıyor, ayrım sağlam.)
 
 ### Adım 6 — Release build (isteğe bağlı, uzun sürer)
 
 ```powershell
-flutter build apk --release `
+flutter build apk --release --flavor customer `
   --dart-define=SUPABASE_URL=https://dycjvupgvuxkguorzaqz.supabase.co `
   --dart-define=SUPABASE_ANON_KEY=<publishable-key>
 
-flutter build apk --release -t lib/main_admin.dart `
+flutter build apk --release --flavor admin -t lib/main_admin.dart `
   --dart-define=SUPABASE_URL=https://dycjvupgvuxkguorzaqz.supabase.co `
   --dart-define=SUPABASE_ANON_KEY=<publishable-key>
 ```
@@ -390,40 +407,30 @@ daha önce doğrulanmıştı). Release build'ler: müşteri **52.1 MB**, admin *
 
 ---
 
-## 10. Supabase'i canlıya alma (dycjvupgvuxkguorzaqz)
+## 10. Supabase — canlıya alma (dycjvupgvuxkguorzaqz)
 
-Karar: mevcut geliştirme projesi canlı veritabanı olarak kullanılacak. Aşağıdaki
-sıra, o projeyi savunulabilir bir canlı ortama çeviren adımlar. SQL'ler
-`supabase/checks/` altında.
+✅ **Yapıldı (2026-09-23).** Karar: geliştirme projesi canlı veritabanı olarak
+kullanılıyor. Faz 2 şeması uygulandı ve `01_schema_audit.sql` **sıfır FAIL**
+döndürüyor: yedi tablo, üç enum, sekiz trigger, on bir fonksiyon, yirmi altı
+politika. Adımların tamamı ve sırası `supabase/CANLIYA_CIKIS.md`'de.
 
-| # | Adım | Nasıl |
-|---|---|---|
-| 1 | Şema denetimi | `01_schema_audit.sql`'i SQL editöründe çalıştır. FAIL satırı kalmamalı |
-| 2 | Veri denetimi | `02_data_audit.sql` — bölüm bölüm çalıştır, özellikle 1. sorgu (çifte rezervasyon) boş dönmeli |
-| 3 | Temiz yeniden uygulama | `03_production_reset.sql` Bölüm A → sonra iki migration'ı sırayla yeniden çalıştır |
-| 4 | Test kullanıcılarını sil | `03` Bölüm 3 — anonim kullanıcılar (cascade ile randevu/profil de gider) |
-| 5 | Personel listesini kur | `03` Bölüm 4 — geliştirme hesaplarını çıkar, gerçek personeli ekle |
-| 6 | Panel ayarları | `03` Bölüm 5'teki liste — anonim giriş, yedekleme planı, ücretsiz planın 7 günlük duraklatması |
-| 7 | Tekrar denetle | `01`'i yeniden çalıştır — hepsi OK olmalı |
+> ⚠️ Eski plandaki `03_production_reset.sql` artık yok; yerini `04_faz2_reset.sql`
+> aldı ve o da **bir daha çalıştırılmamalı** — ilk gerçek randevudan itibaren
+> salonun kayıtlarını siler.
 
-**3. adım neden önemli:** bu projedeki şema, migration'ların temiz bir geçişiyle
-değil, kısmi uygulanan bir migration'ın yamalanmasıyla oluştu. Veri hâlâ
-atılabilir durumdayken sıfırdan uygulamak, canlı şemanın git'teki şemayla
-birebir aynı olduğunu **kanıtlar**. Gerçek müşteri verisi geldikten sonra bu
-seçenek kapanır.
-
-**Bunlar SQL'den görünmez, panelden bakılacak:** anonim giriş açık mı, yedekleme
-/ PITR var mı (ücretsiz planda yok), proje 7 gün hareketsizlikte duraklar mı,
-API'de yalnızca `public` şeması açık mı, `service_role` anahtarı hiçbir yerde
-uygulamaya girmiş mi.
+**Panelden bakılacak, SQL'den görünmeyenler** — `CANLIYA_CIKIS.md` sonundaki altı
+maddelik liste, henüz tek tek geçilmedi: anonim giriş ve e-posta sağlayıcısı açık
+mı, şifre politikası / sızmış şifre koruması, yedekleme ve PITR (ücretsiz planda
+yok), 7 gün hareketsizlikte duraklama, API'de yalnızca `public` şeması,
+`service_role` anahtarının uygulamaya / git'e / build komutuna hiç girmemiş olması.
 
 ---
 
-## 11. 🔖 Son kalınan nokta — 2026-09-21
+## 11. 🔖 Son kalınan nokta — 2026-09-24
 
-**Faz 1 + Faz 2 tamamlandı. Sırada SQL'in çalıştırılması var.**
+**Beş faz da tamamlandı. Sırada duman testinin personel yarısı var (§5.1).**
 
-### Faz 1 — şema (yazıldı, uygulanmayı bekliyor)
+### Faz 1 — şema (yazıldı → 2026-09-23'te uygulandı)
 
 | Dosya | Ne |
 |---|---|
@@ -541,19 +548,26 @@ kontrolü unique index'ten önce çalıştığı için dolu slota pencere içind
 Test **canlı veritabanında ~6 kişi ve ~8 randevu** bıraktı, hepsi `555999` ile
 başlayan numaralarda. Silme SQL'i raporun sonunda.
 
+### ✅ Bu tur — 2026-09-24 (doküman güncellemesi)
+
+Kod değişmedi; bu doküman gerçeğe çekildi. Yeniden ölçülenler: `flutter analyze`
+**temiz**, `flutter test` **358/358**, `main` = `origin/main` = `37660c9`, çalışma
+alanı temiz, tek branch, tek worktree.
+
+Düzeltilen bayatlıklar: §1 özet · §2 branch haritası (silinmiş branch'leri
+listeliyordu) · §4 "uygulama kodu hâlâ eski şemaya göre" uyarısı (artık değil) ·
+§5 yapılacaklar · §7 kimliğin cihaza bağlı olduğu maddesi (Faz 2 çözdü) · §8
+flavor'suz komutlar ve 226 test sayısı · §10 (silinmiş `03_production_reset.sql`'i
+tarif ediyordu).
+
 ### 🔴 SIRADA — sende
 
-1. **Duman testinin personel yarısı** — muafiyetler, `no_show` kilidi, işlem ve
-   tutar girişi, istatistik. `CANLIYA_CIKIS.md`'deki 7–14. maddeler
-2. **Test verisini silmek** — `DUMAN_TESTI.md` sonundaki SQL
-3. **Telefon testi** — Android sideload, iOS TestFlight
-4. **Android upload keystore** — yükleme anında
-5. **iOS admin flavor'ı** — Mac mini oturumunda Xcode'da scheme + ayrı bundle id
-6. **Supabase ücretli plan** — telefon testiyle birlikte karara bağlanacak
+Sıralı liste **§5.1**'de, yayın öncesi açık kalanlar **§5.2**'de, dokümantasyon
+borçları **§5.3**'te. Kısaca:
 
-### Sonraya bırakılanlar
-- **Duman testi** — Berk'in onayı olmadan yapılmayacak
-- **Telefon testi** — her şey bittikten sonra
-- **Android upload keystore** — yükleme anında
-- **iOS admin flavor'ı yok** — Mac mini oturumunda Xcode'da kurulacak
-- **Supabase ücretli plan** — telefon testiyle birlikte
+1. Duman testinin **personel yarısı** — `CANLIYA_CIKIS.md` 7–14. maddeler
+2. **Test verisini sil** — `DUMAN_TESTI.md` sonundaki SQL
+3. **Telefon testi** — Android sideload, iOS TestFlight
+
+Sonrası: Android upload keystore · iOS admin flavor'ı (Mac mini) · Supabase
+ücretli plan · panel ayarları turu.
